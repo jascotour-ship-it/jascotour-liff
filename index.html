@@ -1,0 +1,363 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>佳士多旅遊｜線上報名</title>
+<script charset="utf-8" src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+<style>
+  :root {
+    --accent: #0E7490; --accent-soft: #E6F3F6; --text: #1F2937; --muted: #4B5563;
+    --line: #E5E7EB; --bg: #F3F4F6; --danger: #B91C1C;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "PingFang TC", "Noto Sans TC", "Microsoft JhengHei", sans-serif;
+    -webkit-text-size-adjust: 100%; }
+  main { max-width: 520px; margin: 0 auto; padding: 14px 14px 120px; display: flex; flex-direction: column; gap: 12px; }
+  .card { background: #fff; border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+  .label { font-size: 13px; font-weight: 700; color: #374151; }
+  .hint { font-size: 12px; color: var(--muted); }
+  .banner { background: #FEF3C7; color: #78350F; border-radius: 10px; padding: 10px 12px; font-size: 13px; line-height: 1.5; }
+  .hello { display: flex; align-items: center; gap: 12px; padding: 4px 2px; }
+  .avatar { width: 44px; height: 44px; border-radius: 50%; background: #CBD5E1; object-fit: cover; flex-shrink: 0; }
+  .hello b { font-size: 16px; display: block; }
+
+  select, input[type=text], input[type=tel], textarea {
+    width: 100%; font: inherit; font-size: 16px; color: var(--text); background: #fff;
+    border: 1.5px solid #D1D5DB; border-radius: 10px; padding: 0 12px; height: 48px; }
+  textarea { height: 76px; padding: 10px 12px; resize: vertical; }
+  select:focus, input:focus, textarea:focus { outline: none; border-color: var(--accent); }
+  .select-wrap { position: relative; }
+  .select-wrap select { appearance: none; -webkit-appearance: none; padding-right: 40px; }
+  .select-wrap svg { position: absolute; right: 14px; top: 15px; pointer-events: none; }
+
+  .dates { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+  .date { min-height: 58px; border: 1.5px solid #D1D5DB; border-radius: 10px; background: #fff; font: inherit;
+    font-size: 15px; color: var(--text); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; padding: 4px; }
+  .date small { font-size: 11px; color: var(--muted); }
+  .date[aria-pressed=true] { border: 2px solid var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 700; }
+  .date[aria-pressed=true] small { color: var(--accent); }
+  .date:disabled { border-style: dashed; background: #F3F4F6; color: #6B7280; }
+  .date:disabled span { text-decoration: line-through; }
+
+  .row { display: flex; align-items: center; justify-content: space-between; min-height: 60px; }
+  .row + .row { border-top: 1px solid #F3F4F6; }
+  .stepper { display: flex; align-items: center; gap: 14px; }
+  .step { width: 44px; height: 44px; border-radius: 50%; border: 0; background: var(--accent); display: flex; align-items: center; justify-content: center; }
+  .step.minus { background: #fff; border: 1.5px solid #D1D5DB; }
+  .step:disabled { opacity: .35; }
+  .count { font-size: 18px; font-weight: 700; min-width: 20px; text-align: center; }
+
+  .check { display: flex; gap: 10px; align-items: flex-start; font-size: 13px; line-height: 1.6; color: #374151; }
+  .check input { width: 20px; height: 20px; margin: 2px 0 0; accent-color: var(--accent); flex-shrink: 0; }
+  details { font-size: 13px; color: #374151; }
+  details summary { color: var(--accent); cursor: pointer; }
+  .pre { white-space: pre-wrap; line-height: 1.7; }
+
+  .summary .line { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid #F3F4F6; font-size: 15px; }
+  .summary .line:last-child { border-bottom: 0; }
+  .summary .line span:first-child { color: var(--muted); flex-shrink: 0; }
+  .summary .line span:last-child { text-align: right; font-weight: 500; word-break: break-all; }
+  .total { font-size: 20px; font-weight: 700; color: var(--accent); }
+
+  .bar { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid var(--line);
+    padding: 12px 14px calc(14px + env(safe-area-inset-bottom)); }
+  .bar-in { max-width: 520px; margin: 0 auto; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+  .btn { height: 50px; border-radius: 12px; border: 0; background: var(--accent); color: #fff; font: inherit; font-size: 16px; font-weight: 700; padding: 0 26px; }
+  .btn:disabled { background: #9CA3AF; }
+  .btn.secondary { background: #fff; color: #374151; border: 1.5px solid #D1D5DB; font-weight: 500; }
+  .btn.grow { flex: 1; }
+  .btn.grow2 { flex: 2; }
+  .error { color: var(--danger); font-size: 13px; }
+  .center { text-align: center; padding: 40px 10px; color: var(--muted); }
+  .done-icon { width: 64px; height: 64px; border-radius: 50%; background: var(--accent); display: flex; align-items: center; justify-content: center; margin: 10px auto; }
+  [hidden] { display: none !important; }
+</style>
+</head>
+<body>
+<main>
+  <div id="banner" class="banner" hidden></div>
+
+  <!-- 載入中／錯誤 -->
+  <div id="loading" class="center">載入中…</div>
+
+  <!-- 步驟 1：填寫 -->
+  <section id="stepForm" hidden>
+    <div class="hello">
+      <img id="avatar" class="avatar" alt="">
+      <div><b id="helloName">嗨！</b><span class="hint" id="helloHint">請填寫報名資料</span></div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <label class="label" for="trip">選擇行程</label>
+      <div class="select-wrap">
+        <select id="trip"></select>
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#4B5563" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg>
+      </div>
+      <div class="label" id="dateLabel">出發日期</div>
+      <div class="dates" id="dates" role="group" aria-labelledby="dateLabel"></div>
+    </div>
+
+    <div class="card" style="margin-top:12px; padding-top:4px; padding-bottom:4px; gap:0">
+      <div class="row">
+        <div><div style="font-size:15px;font-weight:500">大人</div><div class="hint" id="adultPrice"></div></div>
+        <div class="stepper">
+          <button class="step minus" id="adultMinus" aria-label="減少大人人數"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+          <span class="count" id="adultCount" aria-live="polite">1</span>
+          <button class="step" id="adultPlus" aria-label="增加大人人數"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        </div>
+      </div>
+      <div class="row">
+        <div><div style="font-size:15px;font-weight:500">小孩</div><div class="hint" id="childPrice"></div></div>
+        <div class="stepper">
+          <button class="step minus" id="childMinus" aria-label="減少小孩人數"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#374151" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
+          <span class="count" id="childCount" aria-live="polite">0</span>
+          <button class="step" id="childPlus" aria-label="增加小孩人數"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:12px">
+      <label class="label" for="contact">聯絡人姓名</label>
+      <input type="text" id="contact" placeholder="請輸入姓名" maxlength="30" autocomplete="name">
+      <label class="label" for="phone">手機號碼</label>
+      <input type="tel" id="phone" placeholder="09xx-xxx-xxx" maxlength="12" inputmode="numeric" autocomplete="tel">
+      <label class="label" for="note">備註（選填）</label>
+      <textarea id="note" maxlength="300" placeholder="例如：素食、需要接送"></textarea>
+      <div class="hint">姓名和手機填過一次，下次會自動帶入</div>
+    </div>
+
+    <p class="error" id="formError" role="alert"></p>
+  </section>
+
+  <!-- 步驟 2：確認 -->
+  <section id="stepConfirm" hidden>
+    <div class="hint" style="font-size:14px;color:#374151">請確認以下資料，送出後聊天室會收到確認訊息</div>
+    <div class="card summary" style="margin-top:12px;gap:0" id="summary"></div>
+    <div class="card" style="margin-top:12px" id="paymentCard">
+      <div class="label">付款說明</div>
+      <div class="pre" id="payment" style="font-size:14px"></div>
+    </div>
+    <div class="card" style="margin-top:12px">
+      <details id="noticeBox"><summary>報名須知與取消規定</summary><div class="pre" id="notice" style="margin-top:8px"></div></details>
+      <label class="check"><input type="checkbox" id="agree"> 我已閱讀並同意報名須知與取消規定</label>
+    </div>
+    <p class="error" id="submitError" role="alert"></p>
+  </section>
+
+  <!-- 步驟 3：完成 -->
+  <section id="stepDone" class="center" hidden>
+    <div class="done-icon"><svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></div>
+    <h1 style="font-size:20px;color:var(--text);margin:8px 0">報名成功</h1>
+    <p id="doneText" style="line-height:1.7"></p>
+  </section>
+</main>
+
+<div class="bar" id="barForm" hidden>
+  <div class="bar-in">
+    <div><div class="hint" id="totalLabel">總金額</div><div style="font-size:18px;font-weight:700" id="totalText">NT$ 0</div></div>
+    <button class="btn" id="toConfirm">下一步</button>
+  </div>
+</div>
+<div class="bar" id="barConfirm" hidden>
+  <div class="bar-in">
+    <button class="btn secondary grow" id="back">返回修改</button>
+    <button class="btn grow2" id="submit" disabled>確認送出</button>
+  </div>
+</div>
+<div class="bar" id="barDone" hidden>
+  <div class="bar-in"><button class="btn grow" id="closeBtn">關閉</button></div>
+</div>
+
+<script>
+/* ===== 設定：之後只要改這兩行 ===== */
+const CONFIG = {
+  LIFF_ID: '2012584933-Bq5g8jca',  // LINE Developers › 佳士多線上報名 › LIFF
+  API_URL: 'https://script.google.com/macros/s/AKfycbyLlUyK88umV2MGH2FlJiQkUHsUxzoWYZPGz_sk9eN-4Y6ghWs2WHrZQx8VRcrRxifV/exec'
+};
+const MAX_PEOPLE = 20;
+
+const $ = (id) => document.getElementById(id);
+const money = (n) => 'NT$ ' + Number(n).toLocaleString('en-US');
+const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
+const fmtDay = (d) => { const p = d.split('/'); const w = new Date(+p[0], p[1] - 1, +p[2]).getDay(); return `${+p[1]}/${+p[2]}（${WEEK[w]}）`; };
+
+const state = { trips: [], payment: '', notice: '', trip: null, date: null, adults: 1, children: 0,
+                idToken: null, preview: false, inClient: false, sending: false };
+
+function show(step) {
+  ['stepForm', 'stepConfirm', 'stepDone'].forEach((s) => $(s).hidden = s !== step);
+  $('barForm').hidden = step !== 'stepForm';
+  $('barConfirm').hidden = step !== 'stepConfirm';
+  $('barDone').hidden = step !== 'stepDone';
+  window.scrollTo(0, 0);
+}
+function fatal(msg) { $('loading').hidden = false; $('loading').textContent = msg; }
+
+async function init() {
+  try {
+    if (CONFIG.LIFF_ID && window.liff) {
+      await liff.init({ liffId: CONFIG.LIFF_ID });
+      if (!liff.isLoggedIn()) { liff.login(); return; }
+      state.inClient = liff.isInClient();
+      state.idToken = liff.getIDToken();
+      try {
+        const p = await liff.getProfile();
+        $('helloName').textContent = '嗨，' + p.displayName;
+        $('helloHint').textContent = '已自動帶入你的 LINE 資料';
+        if (p.pictureUrl) $('avatar').src = p.pictureUrl;
+      } catch (e) { /* 取不到頭像不影響報名 */ }
+    } else {
+      state.preview = true;
+      $('banner').hidden = false;
+      $('banner').textContent = '預覽模式：尚未設定 LIFF ID，可以試填，但無法送出訂單。';
+    }
+
+    const res = await fetch(CONFIG.API_URL);
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || '讀取行程失敗');
+    state.trips = data.trips; state.payment = data.payment; state.notice = data.notice;
+
+    if (!state.trips.length) { fatal('目前沒有開放報名的行程，請稍後再來或聯絡客服。'); return; }
+
+    // 帶入上次填寫的姓名、手機
+    try {
+      const saved = JSON.parse(localStorage.getItem('jasco_contact') || '{}');
+      if (saved.contact) $('contact').value = saved.contact;
+      if (saved.phone) $('phone').value = saved.phone;
+    } catch (e) {}
+
+    $('trip').innerHTML = '';
+    state.trips.forEach((t, i) => { const o = document.createElement('option'); o.value = i; o.textContent = t.name; $('trip').appendChild(o); });
+    selectTrip(0);
+    $('loading').hidden = true;
+    show('stepForm');
+  } catch (e) {
+    fatal('無法載入報名表：' + e.message + '。請關閉後再試一次。');
+  }
+}
+
+function selectTrip(i) {
+  state.trip = state.trips[i];
+  const firstOpen = state.trip.dates.find((d) => d.left > 0);
+  state.date = firstOpen || null;
+  renderDates(); clampPeople(); render();
+}
+
+function renderDates() {
+  const box = $('dates'); box.innerHTML = '';
+  state.trip.dates.forEach((d) => {
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'date';
+    b.disabled = d.left <= 0;
+    b.setAttribute('aria-pressed', String(state.date === d));
+    const s = document.createElement('span'); s.textContent = fmtDay(d.date);
+    const small = document.createElement('small'); small.textContent = d.left <= 0 ? '額滿' : `剩 ${d.left} 位`;
+    b.append(s, small);
+    b.onclick = () => { state.date = d; renderDates(); clampPeople(); render(); };
+    box.appendChild(b);
+  });
+}
+
+function maxPeople() { return Math.min(MAX_PEOPLE, state.date ? state.date.left : 0); }
+function clampPeople() {
+  const max = maxPeople();
+  if (state.adults + state.children > max) { state.children = Math.max(0, Math.min(state.children, max - 1)); state.adults = Math.max(1, max - state.children); }
+}
+function total() { return state.date ? state.date.adultPrice * state.adults + state.date.childPrice * state.children : 0; }
+
+function render() {
+  const d = state.date, people = state.adults + state.children, max = maxPeople();
+  $('adultPrice').textContent = d ? money(d.adultPrice) + ' / 人' : '';
+  $('childPrice').textContent = d ? money(d.childPrice) + ' / 人' : '';
+  $('adultCount').textContent = state.adults;
+  $('childCount').textContent = state.children;
+  $('adultMinus').disabled = state.adults <= 1;
+  $('childMinus').disabled = state.children <= 0;
+  $('adultPlus').disabled = people >= max;
+  $('childPlus').disabled = people >= max;
+  $('totalLabel').textContent = `總金額（${people} 位）`;
+  $('totalText').textContent = money(total());
+  $('toConfirm').disabled = !d;
+}
+
+$('trip').onchange = (e) => selectTrip(+e.target.value);
+$('adultPlus').onclick = () => { state.adults++; render(); };
+$('adultMinus').onclick = () => { state.adults = Math.max(1, state.adults - 1); render(); };
+$('childPlus').onclick = () => { state.children++; render(); };
+$('childMinus').onclick = () => { state.children = Math.max(0, state.children - 1); render(); };
+
+function cleanPhone(v) { return v.replace(/[^\d]/g, ''); }
+
+$('toConfirm').onclick = () => {
+  const contact = $('contact').value.trim(), phone = cleanPhone($('phone').value);
+  let err = '';
+  if (!state.date) err = '請選擇出發日期';
+  else if (!contact) err = '請填寫聯絡人姓名';
+  else if (!/^09\d{8}$/.test(phone)) err = '手機號碼格式不正確，請輸入 09 開頭的 10 碼';
+  $('formError').textContent = err;
+  if (err) return;
+
+  const people = '大人 ' + state.adults + ' 位' + (state.children ? '、小孩 ' + state.children + ' 位' : '');
+  const lines = [['行程', state.trip.name], ['出發日期', fmtDay(state.date.date)], ['人數', people],
+                 ['聯絡人', contact], ['手機', phone.replace(/(\d{4})(\d{3})(\d{3})/, '$1-$2-$3')]];
+  const note = $('note').value.trim();
+  if (note) lines.push(['備註', note]);
+  const box = $('summary'); box.innerHTML = '';
+  lines.forEach(([k, v]) => { const r = document.createElement('div'); r.className = 'line';
+    const a = document.createElement('span'); a.textContent = k; const b = document.createElement('span'); b.textContent = v; r.append(a, b); box.appendChild(r); });
+  const t = document.createElement('div'); t.className = 'line';
+  const ta = document.createElement('span'); ta.textContent = '總金額'; const tb = document.createElement('span'); tb.className = 'total'; tb.textContent = money(total());
+  t.append(ta, tb); box.appendChild(t);
+
+  $('paymentCard').hidden = !state.payment;
+  $('payment').textContent = state.payment;
+  $('noticeBox').hidden = !state.notice;
+  $('notice').textContent = state.notice;
+  $('submitError').textContent = state.preview ? '預覽模式無法送出訂單。' : '';
+  $('submit').disabled = !$('agree').checked || state.preview;
+  show('stepConfirm');
+};
+
+$('agree').onchange = () => { $('submit').disabled = !$('agree').checked || state.preview || state.sending; };
+$('back').onclick = () => show('stepForm');
+
+$('submit').onclick = async () => {
+  if (state.sending) return;
+  state.sending = true; $('submit').disabled = true; $('submit').textContent = '送出中…'; $('submitError').textContent = '';
+  const payload = { idToken: state.idToken, trip: state.trip.name, date: state.date.date,
+    adults: state.adults, children: state.children,
+    contact: $('contact').value.trim(), phone: cleanPhone($('phone').value), note: $('note').value.trim() };
+  try {
+    // 不設 Content-Type，避免瀏覽器先送 CORS 預檢請求
+    const res = await fetch(CONFIG.API_URL, { method: 'POST', body: JSON.stringify(payload) });
+    const data = await res.json();
+    if (!data.ok) throw new Error(data.error || '送出失敗');
+    try { localStorage.setItem('jasco_contact', JSON.stringify({ contact: payload.contact, phone: payload.phone })); } catch (e) {}
+
+    const o = data.order;
+    const people = '大人 ' + o.adults + ' 位' + (o.children ? '、小孩 ' + o.children + ' 位' : '');
+    let sent = false;
+    if (state.inClient) {
+      try {
+        await liff.sendMessages([{ type: 'text', text: `我要報名\n${o.trip} ${fmtDay(o.date)}\n${people}\n訂單編號 ${o.orderId}` }]);
+        sent = true;
+      } catch (e) { /* 傳不出去時仍顯示成功畫面 */ }
+    }
+    $('doneText').textContent = `訂單編號 ${o.orderId}\n` +
+      (sent ? '確認訊息已傳到聊天室，請依付款說明完成訂金匯款。' : '我們已收到您的報名，請截圖保存訂單編號，並依付款說明完成訂金匯款。');
+    $('doneText').style.whiteSpace = 'pre-line';
+    show('stepDone');
+  } catch (e) {
+    $('submitError').textContent = e.message + '。如果一直失敗，請聯絡客服。';
+    state.sending = false; $('submit').textContent = '確認送出'; $('submit').disabled = !$('agree').checked;
+  }
+};
+
+$('closeBtn').onclick = () => { if (window.liff && state.inClient) liff.closeWindow(); else window.close(); };
+
+init();
+</script>
+</body>
+</html>
