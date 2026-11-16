@@ -38,6 +38,16 @@
     padding: 12px 14px calc(14px + env(safe-area-inset-bottom)); }
   .bar a { display: block; max-width: 532px; margin: 0 auto; text-align: center; text-decoration: none; height: 50px; line-height: 50px;
     border-radius: 12px; background: var(--accent); color: #fff; font-size: 16px; font-weight: 700; }
+  .cats { display: grid; grid-template-columns: 1fr; gap: 12px; }
+  .cat { display: flex; align-items: center; gap: 14px; background: #fff; border-radius: 14px; padding: 18px 16px; cursor: pointer; border: 0; width: 100%; text-align: left; font: inherit; color: var(--text); }
+  .cat .ic { width: 52px; height: 52px; border-radius: 14px; background: var(--soft); display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; }
+  .cat b { font-size: 18px; display: block; }
+  .cat small { font-size: 13px; color: var(--muted); }
+  .cat .go { margin-left: auto; color: var(--accent); font-size: 22px; }
+  .cat.empty { opacity: .55; }
+  .tabs { display: flex; gap: 8px; overflow-x: auto; padding-bottom: 2px; -webkit-overflow-scrolling: touch; }
+  .tab { flex-shrink: 0; border: 1.5px solid #D1D5DB; background: #fff; color: var(--text); border-radius: 999px; padding: 8px 14px; font: inherit; font-size: 14px; }
+  .tab[aria-pressed=true] { border-color: var(--accent); background: var(--accent); color: #fff; font-weight: 700; }
   .hint { font-size: 12px; color: var(--muted); text-align: center; }
   .center { text-align: center; color: var(--muted); padding: 40px 10px; }
   [hidden] { display: none !important; }
@@ -46,9 +56,10 @@
 <body>
 <header>
   <button class="back" id="back" hidden aria-label="返回行程列表">‹</button>
-  <div><h1 id="title">佳士多旅行社｜行程介紹</h1><p id="sub">點行程 DM 看完整行程內容</p></div>
+  <div><h1 id="title">佳士多旅行社｜行程介紹</h1><p id="sub">選擇想去的地方</p></div>
 </header>
-<main id="list"><div class="center">載入中…</div></main>
+<main id="home"><div class="center">載入中…</div></main>
+<main id="list" hidden></main>
 <main id="view" hidden></main>
 <div class="bar" id="bar" hidden><a id="signup" href="#">立即報名這個行程</a></div>
 
@@ -79,10 +90,43 @@ function dateChips(t) {
 }
 const dmsOf = (t) => (t.dms && t.dms.length ? t.dms : (t.dm ? [t.dm] : []));
 
-function renderList() {
+let cats = [];
+const ICON = { '國內旅遊': '🏞️', '中國': '🏯', '國外旅遊': '✈️' };
+const catOf = (t) => t.cat || '其他行程';
+
+function renderHome() {
+  const box = $('home'); box.innerHTML = '';
+  const grid = el('div', 'cats');
+  cats.forEach((c) => {
+    const n = trips.filter((t) => catOf(t) === c.name).length;
+    const b = el('button', 'cat' + (n ? '' : ' empty'));
+    b.appendChild(el('div', 'ic', ICON[c.name] || '🧳'));
+    const txt = el('div'); txt.append(el('b', '', c.name), el('small', '', n ? `${n} 個行程` : '行程準備中'));
+    b.append(txt, el('span', 'go', '›'));
+    b.onclick = () => { location.hash = 'cat=' + encodeURIComponent(c.name); };
+    grid.appendChild(b);
+  });
+  box.appendChild(grid);
+  box.appendChild(el('p', 'hint', '有任何問題，歡迎直接在聊天室留言詢問'));
+}
+
+function renderList(catName, sub) {
   const box = $('list'); box.innerHTML = '';
-  if (!trips.length) { box.appendChild(el('div', 'center', '目前沒有開放報名的行程，歡迎直接在聊天室詢問。')); return; }
-  trips.forEach((t, i) => {
+  const c = cats.find((x) => x.name === catName) || { name: catName, subs: [] };
+  const inCat = trips.filter((t) => catOf(t) === catName);
+  const subs = c.subs.filter((s) => inCat.some((t) => t.sub === s));
+  if (subs.length) {
+    const tabs = el('div', 'tabs');
+    ['全部', ...subs].forEach((s) => {
+      const b = el('button', 'tab', s); b.setAttribute('aria-pressed', String((sub || '全部') === s));
+      b.onclick = () => { location.replace('#cat=' + encodeURIComponent(catName) + (s === '全部' ? '' : '&sub=' + encodeURIComponent(s))); };
+      tabs.appendChild(b);
+    });
+    box.appendChild(tabs);
+  }
+  const shown = inCat.filter((t) => !sub || t.sub === sub);
+  if (!shown.length) { box.appendChild(el('div', 'center', '這個分類的行程準備中，歡迎直接在聊天室詢問。')); return; }
+  shown.forEach((t) => {
     const card = el('section', 'card');
     const dms = dmsOf(t);
     card.appendChild(dms.length ? dmImg(dms[0], t.name + ' 行程 DM') : el('div', 'nodm', '行程 DM 準備中'));
@@ -92,7 +136,6 @@ function renderList() {
     card.onclick = () => { location.hash = 'trip=' + encodeURIComponent(t.name); };
     box.appendChild(card);
   });
-  box.appendChild(el('p', 'hint', '有任何問題，歡迎直接在聊天室留言詢問'));
 }
 
 /** J 欄可放文字或連結：雲端硬碟檔案、Google 文件直接嵌入顯示，其他網址顯示成按鈕 */
@@ -135,25 +178,30 @@ function renderTrip(t) {
 }
 
 function route() {
-  const m = location.hash.match(/^#trip=(.+)$/);
-  const t = m && trips.find((x) => x.name === decodeURIComponent(m[1]));
-  $('list').hidden = !!t; $('view').hidden = !t; $('bar').hidden = !t; $('back').hidden = !t;
-  $('title').textContent = t ? t.name : '佳士多旅行社｜行程介紹';
-  $('sub').textContent = t ? '完整行程內容' : '點行程 DM 看完整行程內容';
-  if (t) renderTrip(t);
+  const h = location.hash.slice(1), q = new URLSearchParams(h);
+  const t = q.get('trip') && trips.find((x) => x.name === q.get('trip'));
+  const cat = !t && q.get('cat');
+  $('home').hidden = !!(t || cat); $('list').hidden = !cat; $('view').hidden = !t; $('bar').hidden = !t; $('back').hidden = !(t || cat);
+  if (t) { $('title').textContent = t.name; $('sub').textContent = catOf(t) + (t.sub ? '｜' + t.sub : ''); renderTrip(t); }
+  else if (cat) { $('title').textContent = cat; $('sub').textContent = '點行程 DM 看完整行程內容'; renderList(cat, q.get('sub')); }
+  else { $('title').textContent = '佳士多旅行社｜行程介紹'; $('sub').textContent = '選擇想去的地方'; renderHome(); }
   window.scrollTo(0, 0);
 }
-$('back').onclick = () => { if (history.length > 1) history.back(); else location.hash = ''; };
+$('back').onclick = () => {
+  const q = new URLSearchParams(location.hash.slice(1)); const t = q.get('trip') && trips.find((x) => x.name === q.get('trip'));
+  location.hash = t ? 'cat=' + encodeURIComponent(catOf(t)) : '';
+};
 window.addEventListener('hashchange', route);
 
 (async function load() {
   try {
     const data = await (await fetch(API_URL)).json();
     if (!data.ok) throw new Error(data.error || '讀取失敗');
-    trips = data.trips;
-    renderList(); route();
+    trips = data.trips; cats = data.categories || [];
+    trips.forEach((t) => { if (!cats.some((c) => c.name === catOf(t))) cats.push({ name: catOf(t), subs: [] }); });
+    route();
   } catch (e) {
-    $('list').innerHTML = ''; $('list').appendChild(el('div', 'center', '讀取行程失敗，請稍後再試。'));
+    $('home').innerHTML = ''; $('home').appendChild(el('div', 'center', '讀取行程失敗，請稍後再試。'));
   }
 })();
 </script>
