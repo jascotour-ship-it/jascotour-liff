@@ -230,7 +230,7 @@ async function init() {
 
     $('trip').innerHTML = '';
     state.trips.forEach((t, i) => { const o = document.createElement('option'); o.value = i; o.textContent = t.name; $('trip').appendChild(o); });
-    selectTrip(0);
+    const want = Math.max(0, state.trips.findIndex((t) => t.name === new URLSearchParams(location.search).get('trip'))); $('trip').value = want; selectTrip(want);
     $('loading').hidden = true;
     show('stepForm');
   } catch (e) {
