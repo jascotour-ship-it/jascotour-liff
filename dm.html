@@ -29,6 +29,10 @@
   .sec h3 { margin: 0 0 8px; font-size: 15px; }
   .detail { white-space: pre-wrap; line-height: 1.8; font-size: 15px; }
   .imgs { background: #fff; border-radius: 14px; overflow: hidden; }
+  .embed { display: block; width: 100%; height: 72vh; border: 0; border-radius: 10px; background: #F3F4F6; margin: 4px 0 8px; }
+  .open { display: block; font-size: 14px; color: var(--accent); font-weight: 700; text-decoration: none; margin-bottom: 6px; }
+  .linkbtn { display: block; text-align: center; text-decoration: none; height: 46px; line-height: 46px; border-radius: 12px;
+    border: 1.5px solid var(--accent); color: var(--accent); font-size: 15px; font-weight: 700; margin: 6px 0; }
   .bar { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid #E5E7EB;
     padding: 12px 14px calc(14px + env(safe-area-inset-bottom)); }
   .bar a { display: block; max-width: 532px; margin: 0 auto; text-align: center; text-decoration: none; height: 50px; line-height: 50px;
@@ -90,13 +94,39 @@ function renderList() {
   box.appendChild(el('p', 'hint', '有任何問題，歡迎直接在聊天室留言詢問'));
 }
 
+/** J 欄可放文字或連結：雲端硬碟檔案、Google 文件直接嵌入顯示，其他網址顯示成按鈕 */
+function previewUrl(u) {
+  let m = u.match(/drive\.google\.com\/(?:file\/d\/|open\?id=)([\w-]{20,})/);
+  if (m) return 'https://drive.google.com/file/d/' + m[1] + '/preview';
+  m = u.match(/docs\.google\.com\/(document|presentation|spreadsheets)\/d\/([\w-]{20,})/);
+  if (m) return 'https://docs.google.com/' + m[1] + '/d/' + m[2] + '/preview';
+  return '';
+}
+function renderDetail(sec, text) {
+  let buf = [];
+  const flush = () => { if (buf.join('').trim()) sec.appendChild(el('div', 'detail', buf.join('\n').trim())); buf = []; };
+  text.split('\n').forEach((line) => {
+    const u = line.trim();
+    if (!/^https?:\/\/\S+$/.test(u)) { buf.push(line); return; }
+    flush();
+    const pv = previewUrl(u);
+    if (pv) {
+      const f = el('iframe', 'embed'); f.src = pv; f.allow = 'autoplay'; f.loading = 'lazy'; sec.appendChild(f);
+      const o = el('a', 'open', '在新視窗開啟完整行程 ›'); o.href = u; o.target = '_blank'; o.rel = 'noopener'; sec.appendChild(o);
+    } else {
+      const o = el('a', 'linkbtn', '查看完整行程 ›'); o.href = u; o.target = '_blank'; o.rel = 'noopener'; sec.appendChild(o);
+    }
+  });
+  flush();
+}
+
 function renderTrip(t) {
   const box = $('view'); box.innerHTML = '';
   const dms = dmsOf(t);
   if (dms.length) { const w = el('div', 'imgs'); dms.forEach((src, i) => w.appendChild(dmImg(src, `${t.name} 行程 DM ${i + 1}`))); box.appendChild(w); }
   const info = el('div', 'sec'); info.append(el('h2', 'name', t.name), priceLine(t)); info.lastChild.style.margin = '6px 0 10px'; info.appendChild(dateChips(t)); box.appendChild(info);
   const sec = el('div', 'sec'); sec.appendChild(el('h3', '', '行程內容'));
-  sec.appendChild(el('div', 'detail', t.detail || '詳細行程內容準備中，歡迎直接在聊天室詢問。'));
+  renderDetail(sec, t.detail || '詳細行程內容準備中，歡迎直接在聊天室詢問。');
   box.appendChild(sec);
   const open = t.dates.some((d) => d.left > 0);
   $('signup').textContent = open ? '立即報名這個行程' : '已額滿，私訊詢問候補';
