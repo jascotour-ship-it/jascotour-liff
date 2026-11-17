@@ -135,8 +135,8 @@
   <section id="stepConfirm" hidden>
     <div class="hint" style="font-size:14px;color:#374151">請確認以下資料，送出後聊天室會收到確認訊息</div>
     <div class="card summary" style="margin-top:12px;gap:0" id="summary"></div>
-    <div class="card" style="margin-top:12px" id="paymentCard">
-      <div class="label">付款說明</div>
+    <div class="card summary" style="margin-top:12px;gap:0" id="paymentCard">
+      <div class="label" style="margin-bottom:4px">付款資訊</div>
       <div class="pre" id="payment" style="font-size:14px"></div>
     </div>
     <div class="card" style="margin-top:12px">
@@ -183,7 +183,7 @@ const money = (n) => 'NT$ ' + Number(n).toLocaleString('en-US');
 const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 const fmtDay = (d) => { const p = d.split('/'); const w = new Date(+p[0], p[1] - 1, +p[2]).getDay(); return `${+p[1]}/${+p[2]}（${WEEK[w]}）`; };
 
-const state = { trips: [], payment: '', notice: '', trip: null, date: null, adults: 1, children: 0,
+const state = { trips: [], payment: '', notice: '', bank: {}, trip: null, date: null, adults: 1, children: 0,
                 idToken: null, preview: false, inClient: false, sending: false };
 
 function show(step) {
@@ -217,7 +217,7 @@ async function init() {
     const res = await fetch(CONFIG.API_URL);
     const data = await res.json();
     if (!data.ok) throw new Error(data.error || '讀取行程失敗');
-    state.trips = data.trips; state.payment = data.payment; state.notice = data.notice;
+    state.trips = data.trips; state.payment = data.payment; state.notice = data.notice; state.bank = data.bank || {};
 
     if (!state.trips.length) { fatal('目前沒有開放報名的行程，請稍後再來或聯絡客服。'); return; }
 
@@ -288,6 +288,24 @@ $('adultMinus').onclick = () => { state.adults = Math.max(1, state.adults - 1); 
 $('childPlus').onclick = () => { state.children++; render(); };
 $('childMinus').onclick = () => { state.children = Math.max(0, state.children - 1); render(); };
 
+/** 付款期限：報名日 + 3 個工作天（跳過週六、週日） */
+function addWorkdays(d, n) { const x = new Date(d); while (n > 0) { x.setDate(x.getDate() + 1); const w = x.getDay(); if (w !== 0 && w !== 6) n--; } return x; }
+const fmtFull = (d) => `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}（${WEEK[d.getDay()]}）`;
+function renderPayment() {
+  const box = $('payment'); box.innerHTML = '';
+  const n = state.adults + state.children, each = (state.date && state.date.deposit) || 0;
+  const lines = [];
+  if (each) lines.push(['訂金', money(each * n) + (n > 1 ? `（每人 ${money(each)}）` : '')]);
+  lines.push(['付款期限', fmtFull(addWorkdays(new Date(), 3)) + ' 前']);
+  if (state.bank.bank) lines.push(['匯款銀行', state.bank.bank]);
+  if (state.bank.account) lines.push(['帳號', state.bank.account]);
+  if (state.bank.holder) lines.push(['戶名', state.bank.holder]);
+  lines.forEach(([k, v], i) => { const r = document.createElement('div'); r.className = 'line';
+    const a = document.createElement('span'); a.textContent = k; const b = document.createElement('span'); b.textContent = v;
+    if (i === 0 && each) b.className = 'total'; r.append(a, b); box.appendChild(r); });
+  if (state.payment) { const p = document.createElement('div'); p.className = 'pre hint'; p.style.marginTop = '8px'; p.textContent = state.payment; box.appendChild(p); }
+}
+
 function cleanPhone(v) { return v.replace(/[^\d]/g, ''); }
 
 $('toConfirm').onclick = () => {
@@ -311,8 +329,7 @@ $('toConfirm').onclick = () => {
   const ta = document.createElement('span'); ta.textContent = '總金額'; const tb = document.createElement('span'); tb.className = 'total'; tb.textContent = money(total());
   t.append(ta, tb); box.appendChild(t);
 
-  $('paymentCard').hidden = !state.payment;
-  $('payment').textContent = state.payment;
+  renderPayment();
   $('noticeBox').hidden = !state.notice;
   $('notice').textContent = state.notice;
   $('submitError').textContent = state.preview ? '預覽模式無法送出訂單。' : '';
@@ -345,8 +362,11 @@ $('submit').onclick = async () => {
         sent = true;
       } catch (e) { /* 傳不出去時仍顯示成功畫面 */ }
     }
-    $('doneText').textContent = `訂單編號 ${o.orderId}\n` +
-      (sent ? '確認訊息已傳到聊天室，請依付款說明完成訂金匯款。' : '我們已收到您的報名，請截圖保存訂單編號，並依付款說明完成訂金匯款。');
+    const b = o.bank || state.bank || {};
+    const payTxt = (o.deposit ? `訂金 ${money(o.deposit)}，` : '') + `請於 ${o.due || fmtFull(addWorkdays(new Date(), 3))} 前完成匯款` +
+      (b.bank || b.account ? `\n${[b.bank, b.account, b.holder ? '戶名 ' + b.holder : ''].filter(Boolean).join('　')}` : '');
+    $('doneText').textContent = `訂單編號 ${o.orderId}\n` + payTxt + '\n' +
+      (sent ? '確認訊息已傳到聊天室。' : '請截圖保存這個畫面。');
     $('doneText').style.whiteSpace = 'pre-line';
     show('stepDone');
   } catch (e) {
