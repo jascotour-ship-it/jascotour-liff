@@ -36,8 +36,13 @@
     border: 1.5px solid var(--accent); color: var(--accent); font-size: 15px; font-weight: 700; margin: 6px 0; }
   .bar { position: fixed; left: 0; right: 0; bottom: 0; background: #fff; border-top: 1px solid #E5E7EB;
     padding: 12px 14px calc(14px + env(safe-area-inset-bottom)); }
-  .bar a { display: block; max-width: 532px; margin: 0 auto; text-align: center; text-decoration: none; height: 50px; line-height: 50px;
+  .bar-in { display: flex; gap: 8px; max-width: 532px; margin: 0 auto; }
+  .bar a { display: block; flex: 1; text-align: center; text-decoration: none; height: 50px; line-height: 50px;
     border-radius: 12px; background: var(--accent); color: #fff; font-size: 16px; font-weight: 700; }
+  .bar .share { flex: 0 0 auto; display: flex; align-items: center; gap: 4px; height: 50px; padding: 0 16px; border-radius: 12px;
+    border: 1.5px solid var(--accent); background: #fff; color: var(--accent); font: inherit; font-size: 15px; font-weight: 700; cursor: pointer; }
+  .toast { position: fixed; left: 50%; bottom: calc(90px + env(safe-area-inset-bottom)); transform: translateX(-50%); background: rgba(31,41,55,.92);
+    color: #fff; font-size: 14px; padding: 8px 14px; border-radius: 999px; z-index: 10; }
   .cats { display: grid; grid-template-columns: 1fr; gap: 12px; }
   .cat { display: flex; align-items: center; gap: 14px; background: #fff; border-radius: 14px; padding: 18px 16px; cursor: pointer; border: 0; width: 100%; text-align: left; font: inherit; color: var(--text); }
   .cat .ic { width: 52px; height: 52px; border-radius: 14px; background: var(--soft); display: flex; align-items: center; justify-content: center; font-size: 26px; flex-shrink: 0; }
@@ -61,7 +66,10 @@
 <main id="home"><div class="center">載入中…</div></main>
 <main id="list" hidden></main>
 <main id="view" hidden></main>
-<div class="bar" id="bar" hidden><a id="signup" href="#">立即報名這個行程</a></div>
+<div class="bar" id="bar" hidden><div class="bar-in">
+  <button class="share" id="share" type="button"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>分享</button>
+  <a id="signup" href="#">立即報名這個行程</a>
+</div></div>
 
 <script>
 const API_URL = 'https://script.google.com/macros/s/AKfycbyLlUyK88umV2MGH2FlJiQkUHsUxzoWYZPGz_sk9eN-4Y6ghWs2WHrZQx8VRcrRxifV/exec';
@@ -177,6 +185,23 @@ function renderTrip(t) {
   const open = t.dates.some((d) => d.left > 0);
   $('signup').textContent = open ? '立即報名這個行程' : '已額滿，私訊詢問候補';
   $('signup').href = open ? FORM_URL + '?trip=' + encodeURIComponent(t.name) : OA_CHAT + encodeURIComponent('想詢問候補：' + t.name);
+  $('share').onclick = () => shareTrip(t);
+}
+
+/** 分享行程：LINE 裡開好友選擇畫面；一般瀏覽器用手機分享選單，不支援就複製連結 */
+const PAGE_URL = 'https://jascotour-ship-it.github.io/jascotour-liff/dm.html';
+function toast(msg) { const d = el('div', 'toast', msg); document.body.appendChild(d); setTimeout(() => d.remove(), 2200); }
+async function shareTrip(t) {
+  const link = PAGE_URL + '#trip=' + encodeURIComponent(t.name);
+  const days = t.dates.filter((d) => d.left > 0).map((d) => fmtDay(d.date));
+  const lines = ['【佳士多旅行社】' + t.name, '大人 ' + money(Math.min(...t.dates.map((d) => d.adultPrice))) + ' 起'];
+  if (days.length) lines.push('出發：' + days.slice(0, 6).join('、') + (days.length > 6 ? ' 等' : ''));
+  lines.push('看行程、線上報名 👉', link);
+  const text = lines.join('\n');
+  if (/Line\//i.test(navigator.userAgent)) { location.href = 'https://line.me/R/share?text=' + encodeURIComponent(text); return; }
+  if (navigator.share) { try { await navigator.share({ text: text }); return; } catch (e) { if (e && e.name === 'AbortError') return; } }
+  try { await navigator.clipboard.writeText(text); toast('已複製行程連結，可以貼給朋友'); }
+  catch (e) { prompt('複製以下內容分享給朋友：', text); }
 }
 
 function route(keepScroll) {
