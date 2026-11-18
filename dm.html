@@ -189,10 +189,10 @@ function renderTrip(t) {
 }
 
 /** 分享行程：LINE 裡開好友選擇畫面；一般瀏覽器用手機分享選單，不支援就複製連結 */
-const PAGE_URL = 'https://jascotour-ship-it.github.io/jascotour-liff/dm.html';
+const SHORT_URL = 'https://jascotour-ship-it.github.io/jascotour-liff/t#';
 function toast(msg) { const d = el('div', 'toast', msg); document.body.appendChild(d); setTimeout(() => d.remove(), 2200); }
 async function shareTrip(t) {
-  const link = PAGE_URL + '#trip=' + encodeURIComponent(t.name);
+  const link = SHORT_URL + tripCode(t.name);
   const days = t.dates.filter((d) => d.left > 0).map((d) => fmtDay(d.date));
   const lines = ['【佳士多旅行社】' + t.name, '大人 ' + money(Math.min(...t.dates.map((d) => d.adultPrice))) + ' 起'];
   if (days.length) lines.push('出發：' + days.slice(0, 6).join('、') + (days.length > 6 ? ' 等' : ''));
@@ -204,9 +204,19 @@ async function shareTrip(t) {
   catch (e) { prompt('複製以下內容分享給朋友：', text); }
 }
 
+/** 行程短碼：依行程名稱算出固定 4 碼（分享用短網址 …/t#k3x9） */
+function tripCode(name) {
+  let h = 2166136261;
+  for (const ch of name) { h ^= ch.codePointAt(0); h = Math.imul(h, 16777619) >>> 0; }
+  return (h % 1679616).toString(36).padStart(4, '0');
+}
+function tripFromHash(q) {
+  if (q.get('t')) return trips.find((x) => tripCode(x.name) === q.get('t').toLowerCase());
+  return q.get('trip') && trips.find((x) => x.name === q.get('trip'));
+}
 function route(keepScroll) {
   const h = location.hash.slice(1), q = new URLSearchParams(h);
-  const t = q.get('trip') && trips.find((x) => x.name === q.get('trip'));
+  const t = tripFromHash(q);
   const cat = !t && q.get('cat');
   $('home').hidden = !!(t || cat); $('list').hidden = !cat; $('view').hidden = !t; $('bar').hidden = !t; $('back').hidden = !(t || cat);
   if (t) { $('title').textContent = t.name; $('sub').textContent = catOf(t) + (t.sub ? '｜' + t.sub : ''); renderTrip(t); }
@@ -215,7 +225,7 @@ function route(keepScroll) {
   if (!keepScroll) window.scrollTo(0, 0);
 }
 $('back').onclick = () => {
-  const q = new URLSearchParams(location.hash.slice(1)); const t = q.get('trip') && trips.find((x) => x.name === q.get('trip'));
+  const t = tripFromHash(new URLSearchParams(location.hash.slice(1)));
   location.hash = t ? 'cat=' + encodeURIComponent(catOf(t)) : '';
 };
 window.addEventListener('hashchange', () => route());
