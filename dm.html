@@ -74,8 +74,10 @@ const fmtDay = (d) => { const p = d.split('/'); return `${+p[1]}/${+p[2]}（${WE
 const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
 let trips = [];
 
-function dmImg(src, alt) {
-  const img = el('img', 'dm'); img.src = src; img.alt = alt; img.loading = 'lazy';
+/** 雲端硬碟圖片改載入縮小的 JPEG：列表 520px、行程頁 1040px（原圖動輒 2MB） */
+const sized = (src, w) => (/^https:\/\/lh3\.googleusercontent\.com\/d\/[\w-]+$/.test(src) ? src + '=w' + w + '-rj-l80' : src);
+function dmImg(src, alt, w) {
+  const img = el('img', 'dm'); img.src = sized(src, w || 1040); img.alt = alt; img.loading = 'lazy'; img.decoding = 'async';
   img.onerror = () => img.replaceWith(el('div', 'nodm', '行程 DM 準備中'));
   return img;
 }
@@ -129,7 +131,7 @@ function renderList(catName, sub) {
   shown.forEach((t) => {
     const card = el('section', 'card');
     const dms = dmsOf(t);
-    card.appendChild(dms.length ? dmImg(dms[0], t.name + ' 行程 DM') : el('div', 'nodm', '行程 DM 準備中'));
+    card.appendChild(dms.length ? dmImg(dms[0], t.name + ' 行程 DM', 520) : el('div', 'nodm', '行程 DM 準備中'));
     const body = el('div', 'body');
     body.append(el('h2', 'name', t.name), priceLine(t), dateChips(t), el('div', 'more', '看完整行程 ›'));
     card.appendChild(body);
@@ -167,7 +169,7 @@ function renderDetail(sec, text) {
 function renderTrip(t) {
   const box = $('view'); box.innerHTML = '';
   const dms = dmsOf(t);
-  if (dms.length) { const w = el('div', 'imgs'); dms.forEach((src, i) => w.appendChild(dmImg(src, `${t.name} 行程 DM ${i + 1}`))); box.appendChild(w); }
+  if (dms.length) { const w = el('div', 'imgs'); dms.forEach((src, i) => w.appendChild(dmImg(src, `${t.name} 行程 DM ${i + 1}`, 1040))); box.appendChild(w); }
   const info = el('div', 'sec'); info.append(el('h2', 'name', t.name), priceLine(t)); info.lastChild.style.margin = '6px 0 10px'; info.appendChild(dateChips(t)); box.appendChild(info);
   const sec = el('div', 'sec'); sec.appendChild(el('h3', '', '行程內容'));
   renderDetail(sec, t.detail || '詳細行程內容準備中，歡迎直接在聊天室詢問。');
@@ -177,7 +179,7 @@ function renderTrip(t) {
   $('signup').href = open ? FORM_URL + '?trip=' + encodeURIComponent(t.name) : OA_CHAT + encodeURIComponent('想詢問候補：' + t.name);
 }
 
-function route() {
+function route(keepScroll) {
   const h = location.hash.slice(1), q = new URLSearchParams(h);
   const t = q.get('trip') && trips.find((x) => x.name === q.get('trip'));
   const cat = !t && q.get('cat');
@@ -185,23 +187,32 @@ function route() {
   if (t) { $('title').textContent = t.name; $('sub').textContent = catOf(t) + (t.sub ? '｜' + t.sub : ''); renderTrip(t); }
   else if (cat) { $('title').textContent = cat; $('sub').textContent = '點行程 DM 看完整行程內容'; renderList(cat, q.get('sub')); }
   else { $('title').textContent = '佳士多旅行社｜行程介紹'; $('sub').textContent = '選擇想去的地方'; renderHome(); }
-  window.scrollTo(0, 0);
+  if (!keepScroll) window.scrollTo(0, 0);
 }
 $('back').onclick = () => {
   const q = new URLSearchParams(location.hash.slice(1)); const t = q.get('trip') && trips.find((x) => x.name === q.get('trip'));
   location.hash = t ? 'cat=' + encodeURIComponent(catOf(t)) : '';
 };
-window.addEventListener('hashchange', route);
+window.addEventListener('hashchange', () => route());
 
+/** 先顯示手機上次存的行程，背景再抓最新資料；有變動才更新畫面 */
+const CACHE_KEY = 'jasco_trips_v1';
+function apply(data, keepScroll) {
+  trips = data.trips; cats = (data.categories || []).map((c) => ({ name: c.name, subs: (c.subs || []).slice() }));
+  trips.forEach((t) => { if (!cats.some((c) => c.name === catOf(t))) cats.push({ name: catOf(t), subs: [] }); });
+  route(keepScroll);
+}
 (async function load() {
+  let cached = null;
+  try { cached = localStorage.getItem(CACHE_KEY); if (cached) apply(JSON.parse(cached)); } catch (e) { cached = null; }
   try {
-    const data = await (await fetch(API_URL)).json();
+    const text = await (await fetch(API_URL)).text();
+    const data = JSON.parse(text);
     if (!data.ok) throw new Error(data.error || '讀取失敗');
-    trips = data.trips; cats = data.categories || [];
-    trips.forEach((t) => { if (!cats.some((c) => c.name === catOf(t))) cats.push({ name: catOf(t), subs: [] }); });
-    route();
+    try { localStorage.setItem(CACHE_KEY, text); } catch (e) { /* 存不了就算了 */ }
+    if (text !== cached) apply(data, !!cached);
   } catch (e) {
-    $('home').innerHTML = ''; $('home').appendChild(el('div', 'center', '讀取行程失敗，請稍後再試。'));
+    if (!cached) { $('home').innerHTML = ''; $('home').appendChild(el('div', 'center', '讀取行程失敗，請稍後再試。')); }
   }
 })();
 </script>
