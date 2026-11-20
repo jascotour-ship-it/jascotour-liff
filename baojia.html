@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>旅遊報價表</title>
+<style>
+:root{--ac:#2F6E8C;--ac2:#e8f1f5;--bd:#d6dde2;--tx:#1f2a30;--mu:#66757e;--bg:#f5f7f8;--wn:#b4452c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font:15px/1.5 -apple-system,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif}
+.wrap{max-width:980px;margin:0 auto;padding:16px}
+h1{font-size:22px;margin:4px 0 2px}
+.sub{color:var(--mu);font-size:13px;margin-bottom:14px}
+.card{background:#fff;border:1px solid var(--bd);border-radius:10px;padding:14px;margin-bottom:14px}
+.card h2{font-size:15px;margin:0 0 10px;color:var(--ac)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+label{display:block;font-size:12px;color:var(--mu);margin-bottom:2px}
+input,select,textarea{width:100%;padding:8px;border:1px solid var(--bd);border-radius:6px;font:inherit;background:#fff;color:var(--tx)}
+textarea{min-height:90px;resize:vertical}
+.tabs{display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap}
+.tab{padding:9px 14px;border:1px solid var(--bd);background:#fff;border-radius:8px;cursor:pointer;font-weight:600;color:var(--mu)}
+.tab.on{background:var(--ac);color:#fff;border-color:var(--ac)}
+table{width:100%;border-collapse:collapse}
+th,td{padding:5px 4px;text-align:left;vertical-align:middle}
+th{font-size:12px;color:var(--mu);font-weight:600;border-bottom:1px solid var(--bd)}
+td input,td select{padding:6px}
+.num{text-align:right}
+.btn{padding:8px 14px;border:1px solid var(--ac);background:var(--ac);color:#fff;border-radius:6px;cursor:pointer;font:inherit}
+.btn.ghost{background:#fff;color:var(--ac)}
+.btn.x{border-color:var(--bd);background:#fff;color:var(--wn);padding:5px 9px}
+.sum{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-top:12px}
+.kpi{background:var(--ac2);border-radius:8px;padding:10px}
+.kpi b{display:block;font-size:19px}
+.kpi span{font-size:12px;color:var(--mu)}
+.kpi.int{background:#fbf1ee}
+pre{white-space:pre-wrap;background:#fafbfb;border:1px dashed var(--bd);border-radius:8px;padding:12px;margin:0;font:14px/1.7 inherit}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.hide{display:none}
+.drag{display:inline-block;cursor:grab;touch-action:none;user-select:none;font-size:20px;color:var(--mu);padding:2px 8px}
+tr.dragging{background:var(--ac2);opacity:.85}
+tr.dragging .drag{cursor:grabbing}
+.note{font-size:12px;color:var(--mu);margin-top:6px}
+.seg{display:inline-flex;border:1px solid var(--bd);border-radius:8px;overflow:hidden}
+.seg button{border:0;background:#fff;padding:7px 12px;cursor:pointer;font:inherit;color:var(--mu)}
+.seg button.on{background:var(--ac);color:#fff}
+@media(max-width:640px){.wrap{padding:10px}th:nth-child(3),td:nth-child(3){min-width:70px}.scroll{overflow-x:auto}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>旅遊報價表</h1>
+<div id="qstat" style="display:inline-block;background:var(--ac2);color:var(--ac);font-weight:700;border-radius:6px;padding:3px 10px;margin:2px 0 6px">新報價（尚未存檔）</div>
+<div class="sub">在這裡輸入內部資料（含成本、利潤）；填好後到最下方輸出客戶版／內部版，並可存成 PDF。</div>
+
+<div class="card">
+  <h2>報價單資料</h2>
+  <div class="grid">
+    <div><label>旅行社名稱</label><input id="company" value="佳士多旅行社"></div>
+    <div><label>客戶名稱</label><input id="client" placeholder="例：王先生／○○公司"></div>
+    <div><label>承辦人／電話</label><input id="contact" placeholder="例：小美 02-1234-5678"></div>
+    <div><label>報價日期</label><input id="qdate" type="date"></div>
+    <div><label>報價有效天數</label><input id="valid" type="number" value="7" min="0"></div>
+  </div>
+</div>
+
+<div class="card">
+  <label>報價類型（請選擇）</label>
+  <select id="modeSel" style="font-weight:600">
+    <option value="group">團體行程（固定出發日）</option>
+    <option value="custom">客製／包團</option>
+    <option value="fit">機＋酒自由行</option>
+  </select>
+</div>
+
+<!-- 團體 -->
+<div id="p-group">
+  <div class="card">
+    <h2>團體行程</h2>
+    <div class="grid">
+      <div><label>行程名稱</label><input id="g_name" placeholder="例：海味山東 東嶽泰山8日"></div>
+      <div><label>出發日期</label><input id="g_date" placeholder="例：2026/12/10"></div>
+      <div><label>天數</label><input id="g_days" placeholder="例：8天7夜"></div>
+      <div><label>每人訂金</label><input id="g_dep" type="number" value="0" min="0"></div>
+    </div>
+    <div class="scroll" style="margin-top:10px"><table>
+      <tr><th>身分</th><th class="num">單價</th><th class="num">人數</th><th class="num">小計</th></tr>
+      <tr><td>大人（雙人房）</td><td><input class="num g_p" id="g_p1" type="number" min="0" value="0"></td><td><input class="num g_n" id="g_n1" type="number" min="0" value="0"></td><td class="num" id="g_s1">0</td></tr>
+      <tr><td>小孩（佔床）</td><td><input class="num g_p" id="g_p2" type="number" min="0" value="0"></td><td><input class="num g_n" id="g_n2" type="number" min="0" value="0"></td><td class="num" id="g_s2">0</td></tr>
+      <tr><td>小孩（不佔床）</td><td><input class="num g_p" id="g_p3" type="number" min="0" value="0"></td><td><input class="num g_n" id="g_n3" type="number" min="0" value="0"></td><td class="num" id="g_s3">0</td></tr>
+      <tr><td>嬰兒</td><td><input class="num g_p" id="g_p4" type="number" min="0" value="0"></td><td><input class="num g_n" id="g_n4" type="number" min="0" value="0"></td><td class="num" id="g_s4">0</td></tr>
+      <tr><td>單人房差</td><td><input class="num g_p" id="g_p5" type="number" min="0" value="0"></td><td><input class="num g_n" id="g_n5" type="number" min="0" value="0"></td><td class="num" id="g_s5">0</td></tr>
+    </table></div>
+    <div class="sum">
+      <div class="kpi"><span>報價總額</span><b id="g_total">0</b></div>
+      <div class="kpi"><span>訂金合計</span><b id="g_depsum">0</b></div>
+      <div class="kpi"><span>尾款</span><b id="g_bal">0</b></div>
+    </div>
+  </div>
+</div>
+
+<!-- 客製 / 機酒 -->
+<div id="p-cx" class="hide">
+  <div class="card">
+    <h2 id="cx_title">客製／包團</h2>
+    <div class="grid">
+      <div><label>行程／目的地</label><input id="c_name" placeholder="例：花蓮三日企業旅遊"></div>
+      <div><label>出發日期／期間</label><input id="c_date" placeholder="例：2027/03/05–03/07"></div>
+      <div><label>總人數</label><input id="c_pax" type="number" min="1" value="20"></div>
+      <div><label>天數（遊覽車、導遊計算用）</label><input id="c_days" type="number" min="1" value="3"></div>
+      <div><label>利潤金額 NT$（成本上加）</label><div class="row" style="flex-wrap:nowrap"><input id="c_margin" type="number" min="0" value="0"><select id="c_munit" style="width:90px"><option value="group">整團</option><option value="pp">每人</option></select></div></div>
+      <div><label>服務費 NT$（報價上加，可為 0）</label><div class="row" style="flex-wrap:nowrap"><input id="c_tax" type="number" min="0" value="0"><select id="c_tunit" style="width:90px"><option value="group">整團</option><option value="pp">每人</option></select></div></div>
+      <div><label>稅金（報價上加，可為 0）</label><div class="row" style="flex-wrap:nowrap"><input id="c_vat" type="number" min="0" value="0"><select id="c_vunit" style="width:110px"><option value="pct">% 稅率</option><option value="group">NT$ 整團</option><option value="pp">NT$ 每人</option></select></div></div>
+      <div><label>訂金 %</label><input id="c_depp" type="number" min="0" max="100" value="30"></div>
+    </div>
+    <div class="scroll" style="margin-top:12px"><table id="items">
+      <thead><tr><th>項目</th><th>備註</th><th>計價方式</th><th class="num">成本單價</th><th class="num">數量</th><th class="num">成本小計</th><th>拖曳</th><th></th></tr></thead>
+      <tbody></tbody>
+    </table></div>
+    <div class="row" style="margin-top:8px"><button class="btn ghost" id="addRow">＋ 新增項目</button><span class="note" id="ntsum" style="margin:0"></span></div>
+    <div class="note">計價方式：「每人」＝單價×人數×數量（新增項目預設）；「每房」＝（單價×晚數）÷2＝每人平均，再×人數（住宿固定，以兩人一房計；每列各自填晚數，不同飯店請分列，例：A飯店 2 晚、B飯店 1 晚）；「每台」＝單價×台數×天數（遊覽車固定，單價為每台每天）；「每天」＝單價×數量×天數；「每團」＝單價×數量。項目名稱含「住宿／飯店／酒店／旅館／民宿」會自動套用每房，含「遊覽車／巴士」自動套用每台。</div>
+    <div class="sum">
+      <div class="kpi int"><span>總成本（內部）</span><b id="c_cost">0</b></div>
+      <div class="kpi int"><span>毛利（內部）</span><b id="c_profit">0</b></div>
+      <div class="kpi int"><span>毛利率（內部）</span><b id="c_gm">0%</b></div>
+      <div class="kpi"><span>報價總額</span><b id="c_total">0</b></div>
+      <div class="kpi"><span>每人均價（無條件進位）</span><b id="c_pp">0</b></div>
+      <div class="kpi"><span>訂金</span><b id="c_dep">0</b></div>
+    </div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>費用說明</h2>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
+    <div><label>費用包含</label><textarea id="inc"></textarea></div>
+    <div><label>費用不含</label><textarea id="exc"></textarea></div>
+    <div><label>備註／取消規定</label><textarea id="rmk"></textarea></div>
+  </div>
+</div>
+
+<div class="card">
+  <h2>存檔（雲端報價紀錄）</h2>
+  <div class="row">
+    <button class="btn" id="cSave">儲存</button>
+    <button class="btn ghost" id="cSaveNew">另存新報價</button>
+    <button class="btn ghost" id="cList">報價紀錄</button>
+    <button class="btn ghost" id="cNew">開新報價</button>
+    <span class="note" id="cmsg" style="margin:0"></span>
+  </div>
+  <div class="note">「儲存」：存成這份報價的下一版（舊版本都會保留）。「另存新報價」：用新的報價編號存。存檔需要網路，約 2～4 秒。</div>
+  <details style="margin-top:8px"><summary class="note" style="cursor:pointer">備份（沒有網路時用）</summary>
+    <div class="row" style="margin-top:6px">
+      <button class="btn ghost" id="saveF">下載備份檔</button>
+      <button class="btn ghost" id="openF">開啟備份檔</button>
+      <input type="file" id="fileIn" accept=".json,application/json" style="display:none">
+      <span class="note" id="fmsg" style="margin:0"></span>
+    </div>
+  </details>
+</div>
+
+<div class="card noprint-card">
+  <h2>輸出：依上方內部資料，轉成客戶版／內部版</h2>
+  <div class="row">
+    <button class="btn" data-doc="cust">客戶版：預覽／存成 PDF</button>
+    <button class="btn ghost" data-doc="int">內部版：預覽／存成 PDF</button>
+  </div>
+  <div class="row" style="margin-top:8px">
+    <button class="btn ghost" id="dlc">下載客戶版檔案（.html）</button>
+    <button class="btn ghost" id="dli">下載內部版檔案（.html）</button>
+  </div>
+  <div class="note">存成 PDF：進入預覽後按「列印／存成 PDF」，印表機選「另存為 PDF」。客戶版不含成本、利潤與毛利率。</div>
+</div>
+
+</div>
+
+<div id="qmodal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:40;overflow:auto">
+  <div class="card" style="max-width:960px;margin:30px auto">
+    <div class="row" style="justify-content:space-between;margin-bottom:10px">
+      <h2 style="margin:0" id="qmTitle">報價紀錄</h2>
+      <div class="row"><button class="btn ghost" id="qmBack" style="display:none">← 回清單</button><button class="btn ghost" id="qmClose">關閉</button></div>
+    </div>
+    <input id="qmSearch" placeholder="搜尋編號、客戶、行程…" style="margin-bottom:10px">
+    <div class="scroll"><table id="qmTable"></table></div>
+    <div class="note" id="qmMsg"></div>
+  </div>
+</div>
+
+<div id="docview">
+  <div class="bar noprint">
+    <button class="btn" id="dvprint">列印／存成 PDF</button>
+    <button class="btn ghost" id="dvdl">下載此版本檔案</button>
+    <button class="btn ghost" id="dvclose">返回編輯</button>
+  </div>
+  <div id="doc"></div>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const fmt=n=>'NT$ '+Math.round(n).toLocaleString('zh-TW');
+const num=id=>Math.max(0,parseFloat($(id).value)||0);
+let mode='group';
+const DEF={
+ group:{inc:"全程交通（含機票／遊覽車）\n行程表所列住宿、餐食、門票\n領隊及當地導遊\n旅遊責任險",exc:"個人護照及簽證費用\n個人消費、行李超重費\n導遊、司機、領隊小費\n單人房差價（另計）",rmk:"以上報價以出發日當天公告為準，名額有限，額滿為止。\n報名後請於期限內繳付訂金，逾期恕不保留名額。\n取消費用依旅遊契約及公司規定辦理。"},
+ custom:{inc:"遊覽車（含司機、油資、過路費）\n行程所列住宿、餐食、門票\n領隊／導遊服務\n旅遊責任險",exc:"個人消費\n行李超重費\n導遊、司機小費\n行程外自費項目",rmk:"報價依人數與日期估算，實際以確認人數及訂位狀況為準。\n住宿、交通價格可能隨旺季調整，報價有效期間內保留。\n取消費用依旅遊契約及公司規定辦理。"},
+ fit:{inc:"來回機票（含稅金、燃油附加費）\n住宿（含早餐，依報價房型）\n旅遊平安保險",exc:"目的地交通、餐食、門票\n行李超重費、選位費\n簽證費、個人消費",rmk:"機票及房價隨時變動，以出票／訂房確認時為準。\n機票出票後不得更改或退款，依航空公司規定。\n報價有效期間內保留。"}
+};
+const PRESET={
+ custom:[["遊覽車","含司機、油資","car",0,1],["住宿","","room",0,1],["餐食","每人每餐×餐數","pp",0,1],["門票／活動","","pp",0,1],["領隊／導遊","","day",0,1],["旅遊保險","","pp",0,1],["雜資","","pp",0,1]],
+ fit:[["機票","含稅金","pp",0,1],["住宿","","room",0,1],["接送機／交通","","group",0,1],["旅遊保險","","pp",0,1],["簽證／其他","","pp",0,0],["雜資","","pp",0,1]]
+};
+const rows={custom:null,fit:null};
+function loadDefaults(m){const d=DEF[m];$('inc').value=d.inc;$('exc').value=d.exc;$('rmk').value=d.rmk}
+const texts={};
+function saveTexts(){texts[mode]={inc:$('inc').value,exc:$('exc').value,rmk:$('rmk').value}}
+function setMode(m){
+  saveTexts();mode=m;
+  $('p-group').classList.toggle('hide',m!=='group');
+  $('p-cx').classList.toggle('hide',m==='group');
+  if(m!=='group'){
+    $('cx_title').textContent=m==='custom'?'客製／包團（逐項成本報價）':'機＋酒自由行（逐項成本報價）';
+    if(!rows[m])rows[m]=PRESET[m].map(r=>({n:r[0],r:r[1],b:r[2],p:r[3],q:r[4],nt:r[2]==='room'?defNt():null}));
+    renderRows();
+  }
+  const t=texts[m];
+  if(t){$('inc').value=t.inc;$('exc').value=t.exc;$('rmk').value=t.rmk}else loadDefaults(m);
+  calc();
+}
+function renderRows(){
+  const tb=$('items').querySelector('tbody');tb.innerHTML='';
+  rows[mode].forEach((r,i)=>{
+    const tr=document.createElement('tr');
+    tr.innerHTML=`<td><input data-k="n" value="${esc(r.n)}"></td><td><input data-k="r" value="${esc(r.r)}"></td>
+    <td><select data-k="b"${fixedB(r.b)?' disabled':''}>${Object.keys(BL).map(k=>`<option value="${k}"${r.b===k?' selected':''}>${BL[k]}</option>`).join('')}</select></td>
+    <td><input class="num" data-k="p" type="number" min="0" value="${r.p}"></td><td><div class="row" style="flex-wrap:nowrap;gap:4px"><span class="qw" style="display:${r.b==='room'?'none':'flex'};align-items:center;gap:4px"><input class="num" data-k="q" type="number" min="0" value="${r.q}" style="min-width:56px"><span class="note qu" style="margin:0;white-space:nowrap">${QU[r.b]||''}</span></span><span class="ntw" style="display:${r.b==='room'?'flex':'none'};align-items:center;gap:4px;white-space:nowrap"><input class="num" data-k="nt" type="number" min="0" value="${r.nt??1}" style="min-width:50px"><span class="note" style="margin:0">晚</span><span class="note ppv" style="margin:0"></span></span></div></td>
+    <td class="num" data-sub>0</td><td><span class="drag" title="按住拖曳調整順序">⠿</span></td><td><button class="btn x" data-del>✕</button></td>`;
+    tr.addEventListener('input',e=>{const k=e.target.dataset.k;if(!k)return;const R=rows[mode][i];R[k]=(k==='p'||k==='q'||k==='nt')?(parseFloat(e.target.value)||0):e.target.value;
+      if(k==='n'){const nb=detectB(R.n);const was=R.b;if(nb)R.b=nb;else if(fixedB(R.b))R.b='pp';if(R.b!==was){const sel=tr.querySelector('[data-k=b]');sel.value=R.b;sel.disabled=fixedB(R.b);tr.querySelector('.qu').textContent=QU[R.b]||'';syncNt(tr,R)}}
+      if(k==='b'){tr.querySelector('.qu').textContent=QU[R.b]||'';syncNt(tr,R)}
+      calc()});
+    tr.dataset.idx=i;
+    tr.querySelector('.drag').addEventListener('pointerdown',e=>startDrag(e,tr));
+    tr.querySelector('[data-del]').onclick=()=>{rows[mode].splice(i,1);renderRows();calc()};
+    tb.appendChild(tr);
+  });
+}
+function startDrag(e,tr){
+  e.preventDefault();
+  const tb=tr.parentNode,h=e.currentTarget;
+  tr.classList.add('dragging');
+  const move=ev=>{
+    const others=[...tb.children].filter(r=>r!==tr);
+    let before=null;
+    for(const r of others){const b=r.getBoundingClientRect();if(ev.clientY<b.top+b.height/2){before=r;break}}
+    if(before)tb.insertBefore(tr,before);else tb.appendChild(tr);
+  };
+  const up=()=>{
+    document.removeEventListener('pointermove',move);document.removeEventListener('pointerup',up);document.removeEventListener('pointercancel',up);
+    tr.classList.remove('dragging');
+    const old=rows[mode];rows[mode]=[...tb.children].map(r=>old[+r.dataset.idx]);
+    renderRows();calc();
+  };
+  document.addEventListener('pointermove',move);document.addEventListener('pointerup',up);document.addEventListener('pointercancel',up);
+}
+function esc(s){return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;')}
+$('addRow').onclick=()=>{rows[mode].push({n:'',r:'',b:'pp',p:0,q:1});renderRows();calc()};
+function defNt(){return Math.max(1,(Math.max(1,num('c_days'))-1))}
+function syncNt(tr,R){if(R.b==='room'&&R.nt==null){const used=rows[mode].filter(x=>x!==R&&x.b==='room').reduce((t,x)=>t+(+x.nt||0),0);R.nt=Math.max(1,defNt()-used);tr.querySelector('[data-k=nt]').value=R.nt}tr.querySelector('.ntw').style.display=R.b==='room'?'flex':'none';tr.querySelector('.qw').style.display=R.b==='room'?'none':'flex'}
+function rowSub(r,pax,days){const m={pp:pax,room:(r.nt??Math.max(0,days-1))/2*pax,car:days,day:days}[r.b];return r.b==='room'?r.p*m:r.p*r.q*(m===undefined?1:m)}
+const BL={pp:'每人',room:'每房（住宿）',car:'每台（遊覽車）',day:'每天',group:'每團'};
+const QU={pp:'',room:'間',car:'台',day:'',group:''};
+function fixedB(b){return b==='room'||b==='car'}
+function detectB(n){n=n||'';if(/住宿|飯店|酒店|旅館|民宿|旅店|hotel/i.test(n))return 'room';if(/遊覽車|巴士|大巴|中巴/.test(n))return 'car';return null}
+function lines(id){return $(id).value.split('\n').map(s=>s.trim()).filter(Boolean)}
+function calc(){
+  const co=$('company').value||'旅行社',cl=$('client').value,ct=$('contact').value,qd=$('qdate').value,vd=num('valid');
+  if(mode==='group'){
+    let tot=0,pax=0;
+    for(let i=1;i<=5;i++){const s=num('g_p'+i)*num('g_n'+i);$('g_s'+i).textContent=fmt(s);tot+=s;if(i<=4)pax+=num('g_n'+i)}
+    const dep=num('g_dep')*(num('g_n1')+num('g_n2')+num('g_n3')+num('g_n4'));
+    const LL=['大人（雙人房）','小孩（佔床）','小孩（不佔床）','嬰兒','單人房差'];const gl=[];for(let i=1;i<=5;i++){if(num('g_p'+i)>0||num('g_n'+i)>0)gl.push({l:LL[i-1],p:num('g_p'+i),n:num('g_n'+i),s:num('g_p'+i)*num('g_n'+i)})}S={mode:'group',lines:gl,tot,dep,depPer:num('g_dep'),bal:Math.max(0,tot-dep),pax};
+    $('g_total').textContent=fmt(tot);$('g_depsum').textContent=fmt(dep);$('g_bal').textContent=fmt(Math.max(0,tot-dep));
+    const L=['大人（雙人房）','小孩（佔床）','小孩（不佔床）','嬰兒','單人房差'];
+  }else{
+    const days=Math.max(1,num('c_days')),pax=Math.max(1,num('c_pax')),mg=num('c_margin')*($('c_munit').value==='pp'?pax:1),tx=num('c_tax')*($('c_tunit').value==='pp'?pax:1);
+    let cost=0;
+    const trs=$('items').querySelectorAll('tbody tr');
+    {const rr=rows[mode].filter(r=>r.b==='room');const ns=new Set(rr.map(r=>r.n.trim()));let tot=0,seen={};rr.forEach(r=>{const k=r.n.trim();if(!(k in seen)){seen[k]=1;tot+=(+r.nt||0)}});$('ntsum').textContent=rr.length?'住宿晚數合計 '+tot+' 晚／行程 '+Math.max(0,days-1)+' 晚'+(tot!==Math.max(0,days-1)?'（請確認）':''):''}
+    rows[mode].forEach((r,i)=>{const s=rowSub(r,pax,days);cost+=s;if(trs[i]){trs[i].querySelector('[data-sub]').textContent=fmt(s);if(r.b==='room')trs[i].querySelector('.ppv').textContent='＝每人 '+fmt(r.p*(+r.nt||0)/2)}});
+    const sell=cost+mg,vat=(()=>{const v=num('c_vat'),u=$('c_vunit').value;return u==='pct'?Math.round((sell+tx)*v/100):u==='pp'?v*pax:v})(),total=sell+tx+vat,profit=mg;
+    const pp=Math.ceil(total/pax);
+    $('c_cost').textContent=fmt(cost);$('c_profit').textContent=fmt(profit);
+    $('c_gm').textContent=sell>0?(profit/sell*100).toFixed(1)+'%':'0%';
+    $('c_total').textContent=fmt(total);$('c_pp').textContent=fmt(pp);
+    const dep=Math.round(total*num('c_depp')/100);S={mode,days,pax,items:rows[mode].map(r=>({...r,s:rowSub(r,pax,days)})),cost,profit,gm:sell>0?(profit/sell*100).toFixed(1)+'%':'0%',sell,fee:tx,vat,vatLabel:$('c_vunit').value==='pct'?'稅金 '+num('c_vat')+'%':'稅金',total,pp,dep,depp:num('c_depp')};$('c_dep').textContent=fmt(dep);
+  }
+  try{localStorage.setItem('quote_draft_v1',JSON.stringify({co,cl,ct}))}catch(e){}
+}
+document.addEventListener('input',e=>{if(e.target.closest('#items'))return;calc()});
+$('modeSel').addEventListener('change',e=>setMode(e.target.value));
+let S=null;
+function meta(){
+  const co=$('company').value||'旅行社',cl=$('client').value,ct=$('contact').value,qd=$('qdate').value,vd=num('valid');
+  let until='';
+  if(qd&&vd>0){const d=new Date(qd);d.setDate(d.getDate()+vd);until=d.getFullYear()+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+String(d.getDate()).padStart(2,'0')}
+  return {co,cl,ct,qd:qd?qd.replace(/-/g,'/'):'',until};
+}
+const DOCCSS=`
+body{margin:0;background:#8a949a;font:14px/1.6 -apple-system,"Noto Sans TC","PingFang TC","Microsoft JhengHei",sans-serif;color:#1f2a30}
+.sheet{background:#fff;max-width:794px;margin:16px auto;padding:30px 34px;box-shadow:0 2px 10px rgba(0,0,0,.25)}
+.sheet h1{font-size:22px;margin:0 0 4px;color:#2F6E8C;border-bottom:3px solid #2F6E8C;padding-bottom:8px}
+.sheet h3{font-size:15px;margin:18px 0 6px;color:#2F6E8C}
+.warn{background:#fbf1ee;color:#b4452c;border:1px solid #e6b9ac;padding:6px 10px;border-radius:6px;font-weight:600;margin-bottom:10px;font-size:13px}
+.info{display:grid;grid-template-columns:1fr 1fr;gap:2px 20px;margin:10px 0}
+.info div span{color:#66757e;margin-right:6px}
+.sheet table{width:100%;border-collapse:collapse;margin-top:4px}
+.sheet th,.sheet td{border:1px solid #cfd8dd;padding:6px 8px;text-align:left}
+.sheet th{background:#e8f1f5;font-size:13px}
+.sheet td.r,.sheet th.r{text-align:right}
+.sheet tr.tot td{font-weight:700;background:#f5f9fb}
+.sheet tr.big td{font-size:16px;color:#2F6E8C}
+.sheet ul,.sheet ol{margin:2px 0 0;padding-left:22px}
+.foot{margin-top:22px;color:#66757e;font-size:12px;text-align:center}
+.bar{position:sticky;top:0;z-index:5;background:#1f2a30;padding:10px;display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+.bar button{padding:8px 14px;border:1px solid #2F6E8C;background:#2F6E8C;color:#fff;border-radius:6px;cursor:pointer;font:inherit}
+.bar button.ghost{background:#fff;color:#2F6E8C}
+@media print{body{background:#fff}.noprint{display:none!important}.sheet{box-shadow:none;margin:0;max-width:none;padding:0}@page{size:A4;margin:14mm}}
+`;
+function h(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
+function buildDoc(kind){
+  calc();
+  const m=meta(),it=kind==='int';
+  let x='<div class="sheet">';
+  if(it)x+='<div class="warn">內部資料・含成本與利潤，請勿提供客戶</div>';
+  x+='<h1>'+h(m.co)+'　旅遊報價單</h1><div class="info">';
+  const kv=(k,v)=>v?'<div><span>'+k+'</span>'+h(v)+'</div>':'';
+  x+=kv('客戶',m.cl)+kv('承辦',m.ct)+kv('報價日期',m.qd)+kv('報價有效至',m.until);
+  if(S.mode==='group'){x+=kv('行程',$('g_name').value)+kv('出發日期',$('g_date').value)+kv('天數',$('g_days').value)+kv('總人數',S.pax?S.pax+' 人':'')}
+  else{x+=kv('行程',$('c_name').value)+kv('期間',$('c_date').value)+kv('天數',S.days+' 天')+kv('總人數',S.pax+' 人')}
+  x+='</div>';
+  if(S.mode==='group'){
+    x+='<h3>團費</h3><table><tr><th>身分</th><th class="r">單價</th><th class="r">人數</th><th class="r">小計</th></tr>';
+    S.lines.forEach(l=>{x+='<tr><td>'+l.l+'</td><td class="r">'+fmt(l.p)+'</td><td class="r">'+l.n+'</td><td class="r">'+fmt(l.s)+'</td></tr>'});
+    x+='<tr class="tot big"><td colspan="3">報價總額</td><td class="r">'+fmt(S.tot)+'</td></tr>';
+    if(S.depPer>0)x+='<tr><td colspan="3">訂金（每人 '+fmt(S.depPer)+'）</td><td class="r">'+fmt(S.dep)+'</td></tr><tr><td colspan="3">尾款</td><td class="r">'+fmt(S.bal)+'</td></tr>';
+    x+='</table>';
+  }else if(!it){
+    x+='<h3>報價內容</h3><table><tr><th>項目</th><th>說明</th></tr>';
+    S.items.forEach(r=>{if(r.n)x+='<tr><td>'+h(r.n)+'</td><td>'+h(r.r)+'</td></tr>'});
+    x+='</table><table style="margin-top:10px"><tr class="tot big"><td>報價總額</td><td class="r">'+fmt(S.total)+'</td></tr><tr><td>每人均價（'+S.pax+' 人）</td><td class="r">'+fmt(S.pp)+'</td></tr>';
+    if(S.depp>0)x+='<tr><td>訂金（'+S.depp+'%）</td><td class="r">'+fmt(S.dep)+'</td></tr>';
+    x+='</table>';
+  }else{
+    x+='<h3>成本明細</h3><table><tr><th>項目</th><th>備註</th><th>計價</th><th class="r">成本單價</th><th class="r">數量</th><th class="r">小計</th></tr>';
+    S.items.forEach(r=>{if(!r.n)return;const bl=r.b==='room'?'每房×'+(r.nt??0)+'晚÷2（每人 '+fmt(r.p*(+r.nt||0)/2)+'）':r.b==='car'?'每台×'+S.days+'天':r.b==='day'?'每天×'+S.days+'天':(BL[r.b]||'');x+='<tr><td>'+h(r.n)+'</td><td>'+h(r.r)+'</td><td>'+bl+'</td><td class="r">'+fmt(r.p)+'</td><td class="r">'+(r.b==='room'?S.pax+' 人':r.q)+'</td><td class="r">'+fmt(r.s)+'</td></tr>'});
+    x+='<tr class="tot"><td colspan="5">總成本</td><td class="r">'+fmt(S.cost)+'</td></tr><tr><td colspan="5">利潤</td><td class="r">'+fmt(S.profit)+'（毛利率 '+S.gm+'）</td></tr>';
+    if(S.fee>0)x+='<tr><td colspan="5">服務費</td><td class="r">'+fmt(S.fee)+'</td></tr>';
+    if(S.vat>0)x+='<tr><td colspan="5">'+S.vatLabel+'</td><td class="r">'+fmt(S.vat)+'</td></tr>';
+    x+='<tr class="tot big"><td colspan="5">報價總額</td><td class="r">'+fmt(S.total)+'</td></tr><tr><td colspan="5">每人均價（'+S.pax+' 人）</td><td class="r">'+fmt(S.pp)+'</td></tr>';
+    if(S.depp>0)x+='<tr><td colspan="5">訂金（'+S.depp+'%）</td><td class="r">'+fmt(S.dep)+'</td></tr>';
+    x+='</table>';
+  }
+  const blk=(t,id,ol)=>{const a=lines(id);return a.length?'<h3>'+t+'</h3><'+(ol?'ol':'ul')+'>'+a.map(s=>'<li>'+h(s)+'</li>').join('')+'</'+(ol?'ol':'ul')+'>':''};
+  x+=blk('費用包含','inc')+blk('費用不含','exc')+blk('備註','rmk',true);
+  x+='<div class="foot">'+h(m.co)+(m.ct?'　｜　'+h(m.ct):'')+'</div></div>';
+  return x;
+}
+let curKind='cust';
+function openDoc(k){curKind=k;$('doc').innerHTML=buildDoc(k);$('docview').style.display='block';document.body.classList.add('viewing');$('docview').scrollTop=0}
+function fname(k){const c=($('client').value||'').trim().replace(/[\\\/:*?"<>|]/g,'');return '報價單-'+(k==='int'?'內部版':'客戶版')+(c?'-'+c:'')+'.html'}
+function standalone(k){
+  const body=buildDoc(k);
+  return '<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>旅遊報價單'+(k==='int'?'（內部版）':'')+'</title><style>'+DOCCSS+'</style></head><body><div class="bar noprint"><button onclick="window.print()">列印／存成 PDF</button></div>'+body+'</body></html>';
+}
+function download(k){
+  const blob=new Blob([standalone(k)],{type:'text/html;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname(k);document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);
+}
+document.querySelectorAll('[data-doc]').forEach(b=>b.onclick=()=>openDoc(b.dataset.doc));
+$('dlc').onclick=()=>download('cust');$('dli').onclick=()=>download('int');
+$('dvprint').onclick=()=>window.print();
+$('dvdl').onclick=()=>download(curKind);
+$('dvclose').onclick=()=>{$('docview').style.display='none';document.body.classList.remove('viewing')};
+const st=document.createElement('style');st.textContent=DOCCSS.replace(/^\s*body\{[^}]*\}/,'')+'#docview{display:none;position:fixed;inset:0;overflow:auto;background:#8a949a;z-index:50}@media print{.wrap{display:none!important}#docview{position:static;background:#fff;overflow:visible}}';document.head.appendChild(st);
+
+function collect(){
+  saveTexts();
+  const f={};document.querySelectorAll('.wrap input[id],.wrap select[id],.wrap textarea[id]').forEach(el=>{if(el.type!=='file')f[el.id]=el.value});
+  return {app:'jasco-quote',v:1,mode,fields:f,rows,texts};
+}
+$('saveF').onclick=()=>{
+  const d=collect(),c=($('client').value||'').trim().replace(/[\\\/:*?"<>|]/g,''),n=($('c_name').value||$('g_name').value||'').trim().replace(/[\\\/:*?"<>|]/g,'');
+  const name='報價檔-'+[c,n,($('qdate').value||'')].filter(Boolean).join('-')+'.json';
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([JSON.stringify(d,null,1)],{type:'application/json'}));a.download=name;document.body.appendChild(a);a.click();
+  setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);
+  $('fmsg').textContent='已儲存：'+name;
+};
+$('openF').onclick=()=>$('fileIn').click();
+$('fileIn').onchange=e=>{
+  const file=e.target.files[0];if(!file)return;
+  const rd=new FileReader();
+  rd.onload=()=>{
+    try{
+      const d=JSON.parse(rd.result);applyData(d);curId=null;curV=null;setStat();$('fmsg').textContent='已開啟：'+file.name;
+    }catch(_){$('fmsg').textContent='無法開啟：不是本報價表的報價檔'}
+    e.target.value='';
+  };
+  rd.readAsText(file,'utf-8');
+};
+function applyData(d){
+      if(!d||d.app!=='jasco-quote')throw 0;
+      for(const k in d.fields){const el=$(k);if(el&&k!=='modeSel')el.value=d.fields[k]}
+      rows.custom=d.rows.custom||null;rows.fit=d.rows.fit||null;
+      for(const k in texts)delete texts[k];Object.assign(texts,d.texts||{});
+      mode=d.mode;$('modeSel').value=mode;
+      $('p-group').classList.toggle('hide',mode!=='group');$('p-cx').classList.toggle('hide',mode==='group');
+      if(mode!=='group'){$('cx_title').textContent=mode==='custom'?'客製／包團（逐項成本報價）':'機＋酒自由行（逐項成本報價）';if(!rows[mode])rows[mode]=PRESET[mode].map(r=>({n:r[0],r:r[1],b:r[2],p:r[3],q:r[4],nt:r[2]==='room'?defNt():null}));renderRows()}
+      const t=texts[mode];if(t){$('inc').value=t.inc;$('exc').value=t.exc;$('rmk').value=t.rmk}
+      calc();
+}
+// ===== 雲端報價紀錄 =====
+const API='https://script.google.com/macros/s/AKfycbzLEB-JqHdBwSS6wY_wLOIULJGsQkGfOqGN2g5QdwpVqYHe02T6T65hoQu_JubRbv_3mQ/exec';
+let curId=null,curV=null;
+const TYPE={group:'團體行程',custom:'客製／包團',fit:'機＋酒自由行'};
+function setStat(){$('qstat').textContent=curId?curId+'　第 '+curV+' 版':'新報價（尚未存檔）'}
+async function api(q){const r=await fetch(API+q);if(!r.ok)throw new Error(r.status);return r.json()}
+async function cloudSave(asNew){
+  calc();
+  const g=mode==='group';
+  const body={id:asNew?null:curId,client:$('client').value,trip:g?$('g_name').value:$('c_name').value,type:TYPE[mode],
+    cost:g?'':Math.round(S.cost),profit:g?'':Math.round(S.profit),total:Math.round(g?S.tot:S.total),data:collect()};
+  const bs=[$('cSave'),$('cSaveNew')];bs.forEach(b=>b.disabled=true);$('cmsg').textContent='儲存中…';
+  try{
+    const r=await fetch(API,{method:'POST',body:JSON.stringify(body)}).then(r=>r.json());
+    if(!r.ok)throw 0;curId=r.id;curV=r.v;setStat();$('cmsg').textContent='已儲存：'+r.id+' 第 '+r.v+' 版';
+  }catch(e){$('cmsg').textContent='儲存失敗，請確認網路後再試（或先用下方「下載備份檔」）'}
+  finally{bs.forEach(b=>b.disabled=false)}
+}
+$('cSave').onclick=()=>cloudSave(false);
+$('cSaveNew').onclick=()=>cloudSave(true);
+$('cNew').onclick=()=>{if(confirm('開新報價會清空目前畫面（未儲存的修改會不見），確定嗎？'))location.reload()};
+let listCache=[];
+const money=n=>n===''||n==null?'—':fmt(+n);
+function showModal(){$('qmodal').style.display='block'}
+$('qmClose').onclick=()=>$('qmodal').style.display='none';
+$('qmBack').onclick=()=>openList();
+async function openList(){
+  showModal();$('qmTitle').textContent='報價紀錄';$('qmBack').style.display='none';$('qmSearch').style.display='';
+  $('qmTable').innerHTML='';$('qmMsg').textContent='讀取中…';
+  try{listCache=await api('?action=list');$('qmMsg').textContent=listCache.length?'':'目前還沒有報價紀錄';renderList()}
+  catch(e){$('qmMsg').textContent='讀取失敗，請確認網路後再試'}
+}
+function renderList(){
+  const q=$('qmSearch').value.trim().toLowerCase();
+  const L=listCache.filter(r=>!q||[r.id,r.client,r.trip,r.type].join(' ').toLowerCase().includes(q));
+  $('qmTable').innerHTML='<tr><th>報價編號</th><th>客戶</th><th>行程</th><th>類型</th><th class="num">報價總額</th><th>最後存檔</th><th>版本</th><th></th></tr>'+
+    L.map(r=>`<tr><td>${esc(r.id)}</td><td>${esc(r.client||'')}</td><td>${esc(r.trip||'')}</td><td>${esc(r.type||'')}</td><td class="num">${money(r.total)}</td><td>${esc(r.t)}</td><td>第 ${r.v} 版</td>
+    <td style="white-space:nowrap"><button class="btn" data-open="${esc(r.id)}" data-v="${r.v}">開啟</button> <button class="btn ghost" data-hist="${esc(r.id)}">修改紀錄</button></td></tr>`).join('');
+}
+$('qmSearch').oninput=renderList;
+async function openHist(id){
+  $('qmTitle').textContent='修改紀錄：'+id;$('qmBack').style.display='';$('qmSearch').style.display='none';
+  $('qmTable').innerHTML='';$('qmMsg').textContent='讀取中…';
+  try{
+    const H=await api('?action=history&id='+encodeURIComponent(id));$('qmMsg').textContent='開啟舊版本後按「儲存」，會存成最新的一版，不會覆蓋任何紀錄。';
+    $('qmTable').innerHTML='<tr><th>版本</th><th>存檔時間</th><th>客戶</th><th>行程</th><th class="num">總成本</th><th class="num">利潤</th><th class="num">報價總額</th><th></th></tr>'+
+      H.map((r,i)=>{const p=H[i+1];const d=p&&r.total!==''&&p.total!==''?(+r.total)-(+p.total):null;
+        return `<tr><td>第 ${r.v} 版${i===0?'（最新）':''}</td><td>${esc(r.t)}</td><td>${esc(r.client||'')}</td><td>${esc(r.trip||'')}</td><td class="num">${money(r.cost)}</td><td class="num">${money(r.profit)}</td>
+        <td class="num">${money(r.total)}${d?`<div class="note" style="margin:0;color:${d>0?'var(--wn)':'#2e7d4f'}">${d>0?'+':''}${fmt(d).replace('NT$ -','-NT$ ')}</div>`:''}</td>
+        <td><button class="btn ${i===0?'':'ghost'}" data-open="${esc(r.id)}" data-v="${r.v}">開啟此版</button></td></tr>`}).join('');
+  }catch(e){$('qmMsg').textContent='讀取失敗，請確認網路後再試'}
+}
+$('qmTable').addEventListener('click',async e=>{
+  const o=e.target.closest('[data-open]'),h=e.target.closest('[data-hist]');
+  if(h)return openHist(h.dataset.hist);
+  if(!o)return;
+  $('qmMsg').textContent='開啟中…';
+  try{const r=await api('?action=get&id='+encodeURIComponent(o.dataset.open)+'&v='+o.dataset.v);if(!r.ok)throw 0;
+    applyData(r.data);curId=r.id;curV=r.v;setStat();$('qmodal').style.display='none';$('cmsg').textContent='已開啟：'+r.id+' 第 '+r.v+' 版';window.scrollTo(0,0)}
+  catch(e){$('qmMsg').textContent='開啟失敗，請再試一次'}
+});
+$('cList').onclick=openList;
+$('qdate').value=new Date().toISOString().slice(0,10);
+loadDefaults('group');
+calc();
+</script>
+</body>
+</html>
