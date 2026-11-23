@@ -39,6 +39,11 @@ pre{white-space:pre-wrap;background:#fafbfb;border:1px dashed var(--bd);border-r
 #itin textarea{min-height:38px;padding:6px}
 .meal{display:flex;align-items:center;gap:4px;margin-bottom:3px}.meal span{font-size:12px;color:var(--mu);width:14px}.meal input{padding:4px 6px}
 #itin td{vertical-align:top}
+#items input[data-k=n],#items input[data-k=r]{min-width:110px}
+#items input[data-k=p]{width:96px}
+#items input[data-k=q],#items input[data-k=nt]{width:58px;min-width:0!important}
+#items select{width:auto;min-width:96px}
+#items td.num[data-sub]{white-space:nowrap;padding-left:10px}
 .dlab{font-weight:700}.dlab small{display:block;font-weight:400;color:var(--mu)}
 .drag{display:inline-block;cursor:grab;touch-action:none;user-select:none;font-size:20px;color:var(--mu);padding:2px 8px}
 tr.dragging{background:var(--ac2);opacity:.85}
@@ -117,7 +122,7 @@ tr.dragging .drag{cursor:grabbing}
       <div><label>訂金 %</label><input id="c_depp" type="number" min="0" max="100" value="30"></div>
     </div>
     <div class="scroll" style="margin-top:12px"><table id="items">
-      <thead><tr><th>項目</th><th>備註</th><th>計價方式</th><th class="num">成本單價</th><th class="num">數量</th><th class="num">成本小計</th><th>拖曳</th><th></th></tr></thead>
+      <thead><tr><th>項目</th><th>備註</th><th>計價方式</th><th style="text-align:right;padding-right:10px">成本單價</th><th>數量</th><th class="num">成本小計</th><th>拖曳</th><th></th></tr></thead>
       <tbody></tbody>
     </table></div>
     <div class="row" style="margin-top:8px"><button class="btn ghost" id="addRow">＋ 新增項目</button><span class="note" id="ntsum" style="margin:0"></span></div>
