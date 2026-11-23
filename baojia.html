@@ -65,6 +65,7 @@ tr.dragging .drag{cursor:grabbing}
   <h2>報價單資料</h2>
   <div class="grid">
     <div><label>旅行社名稱</label><input id="company" value="佳士多旅行社"></div>
+    <div><label>英文名稱（英文版用）</label><input id="company_en" value="Jasco Travel"></div>
     <div><label>客戶名稱</label><input id="client" placeholder="例：王先生／○○公司"></div>
     <div><label>承辦人／電話</label><input id="contact" placeholder="例：小美 02-1234-5678"></div>
     <div><label>報價日期</label><input id="qdate" type="date"></div>
@@ -190,6 +191,10 @@ tr.dragging .drag{cursor:grabbing}
     <button class="btn ghost" id="dlc">下載客戶版檔案（.html）</button>
     <button class="btn ghost" id="dli">下載內部版檔案（.html）</button>
   </div>
+  <div class="row" style="margin-top:8px">
+    <button class="btn" data-en="cust">英文客戶版：預覽／存成 PDF</button>
+    <button class="btn itinOut" data-en="itin">英文行程表：預覽／存成 PDF</button>
+  </div>
   <div class="row itinOut" style="margin-top:8px">
     <button class="btn" data-doc="itin">行程表：預覽／存成 PDF</button>
     <button class="btn ghost" id="dlt">下載行程表檔案（.html）</button>
@@ -208,6 +213,17 @@ tr.dragging .drag{cursor:grabbing}
     <input id="qmSearch" placeholder="搜尋編號、客戶、行程…" style="margin-bottom:10px">
     <div class="scroll"><table id="qmTable"></table></div>
     <div class="note" id="qmMsg"></div>
+  </div>
+</div>
+
+<div id="trModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:45;overflow:auto">
+  <div class="card" style="max-width:900px;margin:30px auto">
+    <div class="row" style="justify-content:space-between;margin-bottom:6px">
+      <h2 style="margin:0">翻譯對照（可直接修改英文）</h2>
+      <div class="row"><button class="btn" id="trGo">產生英文版</button><button class="btn ghost" id="trClose">關閉</button></div>
+    </div>
+    <div class="note" id="trMsg" style="margin-bottom:8px"></div>
+    <div class="scroll"><table id="trTable"></table></div>
   </div>
 </div>
 
@@ -310,7 +326,7 @@ function renderItin(){
 }
 $('itin').addEventListener('input',e=>{const t=e.target;if(t.dataset.i==null)return;itin[+t.dataset.i][t.dataset.k]=t.value});
 let _itKey='';
-function syncItin(){$('itinCard').classList.toggle('hide',mode!=='custom');document.querySelector('.itinOut').style.display=mode==='custom'?'':'none';const k=itinDays()+'|'+$('it_start').value;if(k!==_itKey){_itKey=k;renderItin()}}
+function syncItin(){$('itinCard').classList.toggle('hide',mode!=='custom');document.querySelectorAll('.itinOut').forEach(e=>e.style.display=mode==='custom'?'':'none');const k=itinDays()+'|'+$('it_start').value;if(k!==_itKey){_itKey=k;renderItin()}}
 function itinHTML(){
   if(S.mode!=='custom')return '';const n=S.days,L=itin.slice(0,n);
   if(!L.some(r=>r.t||r.h||r.b||r.l||r.d))return '';
@@ -378,6 +394,7 @@ body{margin:0;background:#8a949a;font:14px/1.6 -apple-system,"Noto Sans TC","Pin
 function h(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function buildDoc(kind){
   calc();
+  if(/_en$/.test(kind))return buildDocEn(kind.replace('_en',''));
   if(kind==='itin'){const m=meta();let x='<div class="sheet"><h1>'+h(m.co)+'　行程表</h1><div class="info">';
     const kv=(k,v)=>v?'<div><span>'+k+'</span>'+h(v)+'</div>':'';
     const per=$('c_date').value||($('it_start').value?dayDate(0)+' ～ '+dayDate(S.days-1):'');
@@ -424,10 +441,10 @@ function buildDoc(kind){
 }
 let curKind='cust';
 function openDoc(k){curKind=k;$('doc').innerHTML=buildDoc(k);$('docview').style.display='block';document.body.classList.add('viewing');$('docview').scrollTop=0}
-function fname(k){const c=($('client').value||'').trim().replace(/[\\\/:*?"<>|]/g,'');return (k==='itin'?'行程表':'報價單-'+(k==='int'?'內部版':'客戶版'))+(c?'-'+c:'')+'.html'}
+function fname(k){const c=($('client').value||'').trim().replace(/[\\\/:*?"<>|]/g,'');return ({itin:'行程表',cust_en:'Quotation-EN',itin_en:'Itinerary-EN'}[k]||'報價單-'+(k==='int'?'內部版':'客戶版'))+(c?'-'+c:'')+'.html'}
 function standalone(k){
   const body=buildDoc(k);
-  return '<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+(k==='itin'?'行程表':'旅遊報價單'+(k==='int'?'（內部版）':''))+'</title><style>'+DOCCSS+'</style></head><body><div class="bar noprint"><button onclick="window.print()">列印／存成 PDF</button></div>'+body+'</body></html>';
+  return '<!DOCTYPE html><html lang="'+(/_en$/.test(k)?'en':'zh-Hant')+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+({itin:'行程表',cust_en:'Travel Quotation',itin_en:'Itinerary'}[k]||'旅遊報價單'+(k==='int'?'（內部版）':''))+'</title><style>'+DOCCSS+'</style></head><body><div class="bar noprint"><button onclick="window.print()">'+(/_en$/.test(k)?'Print / Save as PDF':'列印／存成 PDF')+'</button></div>'+body+'</body></html>';
 }
 function download(k){
   const blob=new Blob([standalone(k)],{type:'text/html;charset=utf-8'});
@@ -444,7 +461,7 @@ const st=document.createElement('style');st.textContent=DOCCSS.replace(/^\s*body
 function collect(){
   saveTexts();
   const f={};document.querySelectorAll('.wrap input[id],.wrap select[id],.wrap textarea[id]').forEach(el=>{if(el.type==='file')return;f[el.id]=el.type==='checkbox'?el.checked:el.value});
-  return {app:'jasco-quote',v:1,mode,fields:f,rows,texts,itin};
+  return {app:'jasco-quote',v:1,mode,fields:f,rows,texts,itin,tmap};
 }
 $('saveF').onclick=()=>{
   const d=collect(),c=($('client').value||'').trim().replace(/[\\\/:*?"<>|]/g,''),n=($('c_name').value||$('g_name').value||'').trim().replace(/[\\\/:*?"<>|]/g,'');
@@ -468,13 +485,92 @@ $('fileIn').onchange=e=>{
 function applyData(d){
       if(!d||d.app!=='jasco-quote')throw 0;
       for(const k in d.fields){const el=$(k);if(!el||k==='modeSel')continue;if(el.type==='checkbox')el.checked=!!d.fields[k];else el.value=d.fields[k]}
-      rows.custom=d.rows.custom||null;rows.fit=d.rows.fit||null;itin=Array.isArray(d.itin)?d.itin:[];_itKey='';
+      rows.custom=d.rows.custom||null;rows.fit=d.rows.fit||null;itin=Array.isArray(d.itin)?d.itin:[];_itKey='';tmap=d.tmap&&typeof d.tmap==='object'?d.tmap:{};
       for(const k in texts)delete texts[k];Object.assign(texts,d.texts||{});
       mode=d.mode;$('modeSel').value=mode;
       $('p-group').classList.toggle('hide',mode!=='group');$('p-cx').classList.toggle('hide',mode==='group');
       if(mode!=='group'){$('cx_title').textContent=mode==='custom'?'客製／包團（逐項成本報價）':'機＋酒自由行（逐項成本報價）';if(!rows[mode])rows[mode]=PRESET[mode].map(r=>({n:r[0],r:r[1],b:r[2],p:r[3],q:r[4],nt:r[2]==='room'?defNt():null}));renderRows()}
       const t=texts[mode];if(t){$('inc').value=t.inc;$('exc').value=t.exc;$('rmk').value=t.rmk}
       calc();
+}
+// ===== 英文版 =====
+let tmap={};
+const GLOSS={'敬請自理':'On your own','自理':'On your own','飯店內':'Hotel','飯店內用':'Hotel','民宿內':'At B&B','合菜':'Chinese set menu','便當':'Lunch box','飯店自助':'Hotel buffet','飯店自助餐':'Hotel buffet','溫暖的家':'Home sweet home','機上':'On board','—':'—',
+ '全程交通（含機票／遊覽車）':'All transportation (flights / coach)','行程表所列住宿、餐食、門票':'Accommodation, meals and admissions as listed in the itinerary','領隊及當地導遊':'Tour leader and local guide','旅遊責任險':'Travel liability insurance',
+ '個人護照及簽證費用':'Passport and visa fees','個人消費、行李超重費':'Personal expenses and excess baggage fees','導遊、司機、領隊小費':'Tips for guide, driver and tour leader','單人房差價（另計）':'Single room supplement (extra)',
+ '以上報價以出發日當天公告為準，名額有限，額滿為止。':'Prices are subject to the rate on the departure date. Seats are limited and offered on a first-come basis.','報名後請於期限內繳付訂金，逾期恕不保留名額。':'Please pay the deposit by the due date; unpaid bookings will be released.','取消費用依旅遊契約及公司規定辦理。':'Cancellation fees follow the travel contract and company policy.',
+ '遊覽車（含司機、油資、過路費）':'Coach (incl. driver, fuel and tolls)','行程所列住宿、餐食、門票':'Accommodation, meals and admissions as listed in the itinerary','領隊／導遊服務':'Tour leader / guide service','個人消費':'Personal expenses','行李超重費':'Excess baggage fees','導遊、司機小費':'Tips for guide and driver','行程外自費項目':'Optional activities not in the itinerary',
+ '報價依人數與日期估算，實際以確認人數及訂位狀況為準。':'This quote is based on the stated group size and dates; final price depends on confirmed numbers and availability.','住宿、交通價格可能隨旺季調整，報價有效期間內保留。':'Hotel and transport rates may change in peak season; this price is held during the validity period.',
+ '來回機票（含稅金、燃油附加費）':'Round-trip airfare (incl. taxes and fuel surcharge)','住宿（含早餐，依報價房型）':'Accommodation with breakfast (room type as quoted)','旅遊平安保險':'Travel accident insurance','目的地交通、餐食、門票':'Local transport, meals and admissions','行李超重費、選位費':'Excess baggage and seat selection fees','簽證費、個人消費':'Visa fees and personal expenses',
+ '機票及房價隨時變動，以出票／訂房確認時為準。':'Airfares and hotel rates may change until ticketing / booking is confirmed.','機票出票後不得更改或退款，依航空公司規定。':'Tickets cannot be changed or refunded once issued, per airline rules.','報價有效期間內保留。':'Price held during the validity period.',
+ '遊覽車':'Coach','住宿':'Accommodation','餐食':'Meals','門票／活動':'Admissions / activities','領隊／導遊':'Tour leader / guide','旅遊保險':'Travel insurance','雜資':'Miscellaneous','機票':'Airfare','接送機／交通':'Airport transfer / transport','簽證／其他':'Visa / others','含司機、油資':'Incl. driver and fuel','含稅金':'Incl. taxes','每人每餐×餐數':'Per person per meal'};
+const hasCJK=t=>/[\u3400-\u9fff]/.test(t);
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'],WDE=['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+function dayDateEn(i){const v=$('it_start').value;if(!v)return '';const [y,m,d]=v.split('-').map(Number);const t=new Date(y,m-1,d+i);return MON[t.getMonth()]+' '+t.getDate()+' ('+WDE[t.getDay()]+')'}
+function dEn(v){if(!v)return '';const [y,m,d]=v.split(/[-\/]/).map(Number);return MON[m-1]+' '+d+', '+y}
+const T=x=>{x=(x==null?'':String(x)).trim();if(!x||!hasCJK(x))return x;return tmap[x]||GLOSS[x]||x};
+function enStrings(kind){
+  calc();const L=[];const add=v=>{v=(v==null?'':String(v)).trim();if(v&&hasCJK(v)&&!L.includes(v))L.push(v)};
+  add($('client').value);add($('contact').value);
+  if(S.mode==='group'){add($('g_name').value);add($('g_date').value);add($('g_days').value)}
+  else{add($('c_name').value);add($('c_date').value)}
+  if(S.mode==='custom'){add($('it_route').value);itin.slice(0,S.days).forEach(r=>['t','b','l','d','h'].forEach(k=>String(r[k]||'').split('\n').forEach(add)))}
+  if(kind==='cust'){if(S.mode!=='group')S.items.forEach(r=>{if(r.n){add(r.n);add(r.r)}});['inc','exc','rmk'].forEach(id=>lines(id).forEach(add))}
+  return L;
+}
+let trKind='cust';
+async function prepareEn(kind){
+  trKind=kind;const L=enStrings(kind);$('trModal').style.display='block';
+  const need=L.filter(x=>!tmap[x]&&!GLOSS[x]);
+  renderTr(L);
+  if(need.length){$('trMsg').textContent='自動翻譯中（'+need.length+' 筆）…';
+    try{const r=await fetch(API,{method:'POST',body:JSON.stringify({action:'translate',texts:need})}).then(r=>r.json());
+      if(!r.ok)throw 0;need.forEach((x,i)=>{if(r.out[i])tmap[x]=r.out[i]});renderTr(L);$('trMsg').textContent='自動翻譯完成。請檢查英文，不對的地方直接修改，再按「產生英文版」。改過的翻譯會跟著報價存檔。'}
+    catch(e){$('trMsg').textContent='自動翻譯失敗（請確認網路），可以直接手動輸入英文。'}}
+  else $('trMsg').textContent=L.length?'都已有翻譯，可直接修改或按「產生英文版」。':'沒有需要翻譯的中文，可直接按「產生英文版」。';
+}
+function renderTr(L){
+  $('trTable').innerHTML='<tr><th style="width:45%">中文</th><th>英文</th></tr>'+L.map((x,i)=>`<tr><td>${h(x)}</td><td><input data-tr="${i}" value="${esc(tmap[x]||GLOSS[x]||'')}"></td></tr>`).join('');
+  $('trTable').oninput=e=>{const i=e.target.dataset.tr;if(i!=null)tmap[L[+i]]=e.target.value};
+}
+$('trClose').onclick=()=>$('trModal').style.display='none';
+$('trGo').onclick=()=>{$('trModal').style.display='none';openDoc(trKind+'_en')};
+document.querySelectorAll('[data-en]').forEach(b=>b.onclick=()=>prepareEn(b.dataset.en));
+function buildDocEn(kind){
+  const co=$('company_en').value||'Jasco Travel',cl=T($('client').value),ct=T($('contact').value),qd=$('qdate').value,vd=num('valid');
+  let until='';if(qd&&vd>0){const d=new Date(qd);d.setDate(d.getDate()+vd);until=MON[d.getMonth()]+' '+d.getDate()+', '+d.getFullYear()}
+  const kv=(k,v)=>v?'<div><span>'+k+'</span>'+h(v)+'</div>':'';
+  const per=S.mode==='group'?T($('g_date').value):(T($('c_date').value)||(S.mode==='custom'&&$('it_start').value?dayDateEn(0)+' – '+dayDateEn(S.days-1):''));
+  let x='<div class="sheet"><h1>'+h(co)+'　'+(kind==='itin'?'Itinerary':'Travel Quotation')+'</h1><div class="info">';
+  if(kind==='itin')x+=kv('Tour',T($('c_name').value))+kv('Client',cl)+kv('Period',per)+kv('Duration',S.days+' days');
+  else{x+=kv('Client',cl)+kv('Contact',ct)+kv('Quote date',dEn(qd))+kv('Valid until',until);
+    if(S.mode==='group')x+=kv('Tour',T($('g_name').value))+kv('Departure',per)+kv('Duration',T($('g_days').value))+kv('Group size',S.pax?S.pax+' pax':'');
+    else x+=kv('Tour',T($('c_name').value))+kv('Period',per)+kv('Duration',S.days+' days')+kv('Group size',S.pax+' pax')}
+  x+='</div>';
+  if(kind==='itin'){
+    const L=itin.slice(0,S.days);const rt=T($('it_route').value);if(rt)x+='<div style="color:#66757e;margin:-2px 0 6px">'+h(rt)+'</div>';
+    const ml=v=>String(v||'').split('\n').map(T).join('\n');
+    x+='<table><tr><th style="width:96px">Day</th><th>Itinerary</th><th style="width:24%">Meals</th><th style="width:22%">Accommodation</th></tr>';
+    L.forEach((r,i)=>{const d=dayDateEn(i);x+='<tr><td><b>Day '+(i+1)+'</b>'+(d?'<div style="font-size:12px;color:#66757e">'+d+'</div>':'')+'</td><td>'+h(ml(r.t)).replace(/\n/g,'<br>')+'</td><td>'+[['b','B'],['l','L'],['d','D']].map(([k,lb])=>'<span style="color:#66757e">'+lb+': </span>'+(h(T(r[k]))||'—')).join('<br>')+'</td><td>'+h(ml(r.h)).replace(/\n/g,'<br>')+'</td></tr>'});
+    x+='</table>';
+  }else if(S.mode==='group'){
+    const LB={'大人（雙人房）':'Adult (twin share)','小孩（佔床）':'Child (with bed)','小孩（不佔床）':'Child (no bed)','嬰兒':'Infant','單人房差':'Single supplement'};
+    x+='<h3>Tour Price</h3><table><tr><th>Category</th><th class="r">Unit price</th><th class="r">Pax</th><th class="r">Subtotal</th></tr>';
+    S.lines.forEach(l=>{x+='<tr><td>'+LB[l.l]+'</td><td class="r">'+fmt(l.p)+'</td><td class="r">'+l.n+'</td><td class="r">'+fmt(l.s)+'</td></tr>'});
+    x+='<tr class="tot big"><td colspan="3">Total price</td><td class="r">'+fmt(S.tot)+'</td></tr>';
+    if(S.depPer>0)x+='<tr><td colspan="3">Deposit ('+fmt(S.depPer)+' per person)</td><td class="r">'+fmt(S.dep)+'</td></tr><tr><td colspan="3">Balance</td><td class="r">'+fmt(S.bal)+'</td></tr>';
+    x+='</table>';
+  }else{
+    x+='<h3>Quotation Details</h3><table><tr><th>Item</th><th>Description</th></tr>';
+    S.items.forEach(r=>{if(r.n)x+='<tr><td>'+h(T(r.n))+'</td><td>'+h(T(r.r))+'</td></tr>'});
+    x+='</table><table style="margin-top:10px"><tr class="tot big"><td>Total price</td><td class="r">'+fmt(S.total)+'</td></tr><tr><td>Price per person ('+S.pax+' pax)</td><td class="r">'+fmt(S.pp)+'</td></tr>';
+    if(S.depp>0)x+='<tr><td>Deposit ('+S.depp+'%)</td><td class="r">'+fmt(S.dep)+'</td></tr>';
+    x+='</table>';
+  }
+  if(kind==='cust'){const blk=(t,id,ol)=>{const a=lines(id).map(T);return a.length?'<h3>'+t+'</h3><'+(ol?'ol':'ul')+'>'+a.map(s=>'<li>'+h(s)+'</li>').join('')+'</'+(ol?'ol':'ul')+'>':''};
+    x+=blk('Inclusions','inc')+blk('Exclusions','exc')+blk('Remarks','rmk',true)}
+  x+='<div class="foot">'+h(co)+(ct?'　|　'+h(ct):'')+'</div></div>';
+  return x;
 }
 // ===== 雲端報價紀錄 =====
 const API='https://script.google.com/macros/s/AKfycbzLEB-JqHdBwSS6wY_wLOIULJGsQkGfOqGN2g5QdwpVqYHe02T6T65hoQu_JubRbv_3mQ/exec';
