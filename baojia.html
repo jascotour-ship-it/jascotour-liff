@@ -36,6 +36,10 @@ td input,td select{padding:6px}
 pre{white-space:pre-wrap;background:#fafbfb;border:1px dashed var(--bd);border-radius:8px;padding:12px;margin:0;font:14px/1.7 inherit}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .hide{display:none}
+#itin textarea{min-height:38px;padding:6px}
+.meal{display:flex;align-items:center;gap:4px;margin-bottom:3px}.meal span{font-size:12px;color:var(--mu);width:14px}.meal input{padding:4px 6px}
+#itin td{vertical-align:top}
+.dlab{font-weight:700}.dlab small{display:block;font-weight:400;color:var(--mu)}
 .drag{display:inline-block;cursor:grab;touch-action:none;user-select:none;font-size:20px;color:var(--mu);padding:2px 8px}
 tr.dragging{background:var(--ac2);opacity:.85}
 tr.dragging .drag{cursor:grabbing}
@@ -129,6 +133,19 @@ tr.dragging .drag{cursor:grabbing}
   </div>
 </div>
 
+<div class="card hide" id="itinCard">
+  <h2>行程總覽</h2>
+  <div class="grid">
+    <div><label>第一天日期</label><input id="it_start" type="date"></div>
+    <div style="grid-column:span 2"><label>路線摘要（選填，例：桃園・南投・阿里山・高雄）</label><input id="it_route"></div>
+  </div>
+  <div class="scroll" style="margin-top:10px"><table id="itin">
+    <thead><tr><th style="width:90px">天數</th><th>行程</th><th style="width:24%">餐食</th><th style="width:22%">住宿</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+  <div class="note">天數跟著上方「天數」欄位自動增減；填了第一天日期，每天會自動顯示月／日與星期。行程會顯示在內部版；要給客人看，可用下方「行程表」單獨輸出。</div>
+</div>
+
 <div class="card">
   <h2>費用說明</h2>
   <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(260px,1fr))">
@@ -167,6 +184,10 @@ tr.dragging .drag{cursor:grabbing}
   <div class="row" style="margin-top:8px">
     <button class="btn ghost" id="dlc">下載客戶版檔案（.html）</button>
     <button class="btn ghost" id="dli">下載內部版檔案（.html）</button>
+  </div>
+  <div class="row itinOut" style="margin-top:8px">
+    <button class="btn" data-doc="itin">行程表：預覽／存成 PDF</button>
+    <button class="btn ghost" id="dlt">下載行程表檔案（.html）</button>
   </div>
   <div class="note">存成 PDF：進入預覽後按「列印／存成 PDF」，印表機選「另存為 PDF」。客戶版不含成本、利潤與毛利率。</div>
 </div>
@@ -270,6 +291,29 @@ const BL={pp:'每人',room:'每房（住宿）',car:'每台（遊覽車）',day:
 const QU={pp:'',room:'間',car:'台',day:'',group:''};
 function fixedB(b){return b==='room'||b==='car'}
 function detectB(n){n=n||'';if(/住宿|飯店|酒店|旅館|民宿|旅店|hotel/i.test(n))return 'room';if(/遊覽車|巴士|大巴|中巴/.test(n))return 'car';return null}
+let itin=[];
+const WD=['日','一','二','三','四','五','六'];
+function dayDate(i){const v=$('it_start').value;if(!v)return '';const [y,m,d]=v.split('-').map(Number);const t=new Date(y,m-1,d+i);return (t.getMonth()+1)+'/'+t.getDate()+'（'+WD[t.getDay()]+'）'}
+function itinDays(){return Math.max(1,num('c_days'))}
+function renderItin(){
+  const n=itinDays();while(itin.length<n)itin.push({t:'',b:'',l:'',d:'',h:''});
+  itin.forEach(r=>{if(r.m&&!(r.b||r.l||r.d)){r.b=r.m}delete r.m});
+  const tb=$('itin').querySelector('tbody');tb.innerHTML='';
+  for(let i=0;i<n;i++){const r=itin[i];const tr=document.createElement('tr');
+    tr.innerHTML=`<td class="dlab">D${String(i+1).padStart(2,'0')}<small>${dayDate(i)}</small></td><td><textarea data-i="${i}" data-k="t" placeholder="例：日月潭 → 騎單車環湖 → 伊達邵碼頭老街">${h(r.t)}</textarea></td><td>${[['b','早',i===0?'敬請自理':'飯店內'],['l','午','合菜'],['d','晚','飯店自助']].map(([k,lb,ph])=>`<div class="meal"><span>${lb}</span><input data-i="${i}" data-k="${k}" placeholder="例：${ph}" value="${esc(r[k]||'')}"></div>`).join('')}</td><td><textarea data-i="${i}" data-k="h" placeholder="${i===n-1?'例：溫暖的家':'例：日月潭大飯店或同級'}">${h(r.h)}</textarea></td>`;
+    tb.appendChild(tr)}
+}
+$('itin').addEventListener('input',e=>{const t=e.target;if(t.dataset.i==null)return;itin[+t.dataset.i][t.dataset.k]=t.value});
+let _itKey='';
+function syncItin(){$('itinCard').classList.toggle('hide',mode!=='custom');document.querySelector('.itinOut').style.display=mode==='custom'?'':'none';const k=itinDays()+'|'+$('it_start').value;if(k!==_itKey){_itKey=k;renderItin()}}
+function itinHTML(){
+  if(S.mode!=='custom')return '';const n=S.days,L=itin.slice(0,n);
+  if(!L.some(r=>r.t||r.h||r.b||r.l||r.d))return '';
+  let x='<h3>行程總覽</h3>';const rt=$('it_route').value.trim();if(rt)x+='<div style="color:#66757e;margin:-2px 0 6px">'+h(rt)+'</div>';
+  x+='<table><tr><th style="width:78px">天數</th><th>行程</th><th style="width:24%">餐食</th><th style="width:22%">住宿</th></tr>';
+  L.forEach((r,i)=>{const d=dayDate(i);x+='<tr><td><b>D'+String(i+1).padStart(2,'0')+'</b>'+(d?'<div style="font-size:12px;color:#66757e">'+d+'</div>':'')+'</td><td>'+h(r.t).replace(/\n/g,'<br>')+'</td><td>'+[['b','早'],['l','午'],['d','晚']].map(([k,lb])=>'<span style="color:#66757e">'+lb+'：</span>'+(h(r[k]||'')||'—')).join('<br>')+'</td><td>'+h(r.h).replace(/\n/g,'<br>')+'</td></tr>'});
+  return x+'</table>';
+}
 function lines(id){return $(id).value.split('\n').map(s=>s.trim()).filter(Boolean)}
 function calc(){
   const co=$('company').value||'旅行社',cl=$('client').value,ct=$('contact').value,qd=$('qdate').value,vd=num('valid');
@@ -293,9 +337,10 @@ function calc(){
     $('c_total').textContent=fmt(total);$('c_pp').textContent=fmt(pp);
     const dep=Math.round(total*num('c_depp')/100);S={mode,days,pax,items:rows[mode].map(r=>({...r,s:rowSub(r,pax,days)})),cost,profit,gm:sell>0?(profit/sell*100).toFixed(1)+'%':'0%',sell,fee:tx,vat,vatLabel:$('c_vunit').value==='pct'?'稅金 '+num('c_vat')+'%':'稅金',total,pp,dep,depp:num('c_depp')};$('c_dep').textContent=fmt(dep);
   }
+  syncItin();
   try{localStorage.setItem('quote_draft_v1',JSON.stringify({co,cl,ct}))}catch(e){}
 }
-document.addEventListener('input',e=>{if(e.target.closest('#items'))return;calc()});
+document.addEventListener('input',e=>{if(e.target.closest('#items')||e.target.closest('#itin'))return;calc()});
 $('modeSel').addEventListener('change',e=>setMode(e.target.value));
 let S=null;
 function meta(){
@@ -328,6 +373,12 @@ body{margin:0;background:#8a949a;font:14px/1.6 -apple-system,"Noto Sans TC","Pin
 function h(s){return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')}
 function buildDoc(kind){
   calc();
+  if(kind==='itin'){const m=meta();let x='<div class="sheet"><h1>'+h(m.co)+'　行程表</h1><div class="info">';
+    const kv=(k,v)=>v?'<div><span>'+k+'</span>'+h(v)+'</div>':'';
+    const per=$('c_date').value||($('it_start').value?dayDate(0)+' ～ '+dayDate(S.days-1):'');
+    x+=kv('行程',$('c_name').value)+kv('客戶',m.cl)+kv('期間',per)+kv('天數',S.days+' 天')+'</div>';
+    x+=(itinHTML()||'<p>（尚未填寫行程）</p>').replace('<h3>行程總覽</h3>','');
+    x+='<div class="foot">'+h(m.co)+(m.ct?'　｜　'+h(m.ct):'')+'</div></div>';return x}
   const m=meta(),it=kind==='int';
   let x='<div class="sheet">';
   if(it)x+='<div class="warn">內部資料・含成本與利潤，請勿提供客戶</div>';
@@ -335,8 +386,9 @@ function buildDoc(kind){
   const kv=(k,v)=>v?'<div><span>'+k+'</span>'+h(v)+'</div>':'';
   x+=kv('客戶',m.cl)+kv('承辦',m.ct)+kv('報價日期',m.qd)+kv('報價有效至',m.until);
   if(S.mode==='group'){x+=kv('行程',$('g_name').value)+kv('出發日期',$('g_date').value)+kv('天數',$('g_days').value)+kv('總人數',S.pax?S.pax+' 人':'')}
-  else{x+=kv('行程',$('c_name').value)+kv('期間',$('c_date').value)+kv('天數',S.days+' 天')+kv('總人數',S.pax+' 人')}
+  else{const per=$('c_date').value||(S.mode==='custom'&&$('it_start').value?dayDate(0)+' ～ '+dayDate(S.days-1):'');x+=kv('行程',$('c_name').value)+kv('期間',per)+kv('天數',S.days+' 天')+kv('總人數',S.pax+' 人')}
   x+='</div>';
+  if(it)x+=itinHTML();
   if(S.mode==='group'){
     x+='<h3>團費</h3><table><tr><th>身分</th><th class="r">單價</th><th class="r">人數</th><th class="r">小計</th></tr>';
     S.lines.forEach(l=>{x+='<tr><td>'+l.l+'</td><td class="r">'+fmt(l.p)+'</td><td class="r">'+l.n+'</td><td class="r">'+fmt(l.s)+'</td></tr>'});
@@ -344,9 +396,10 @@ function buildDoc(kind){
     if(S.depPer>0)x+='<tr><td colspan="3">訂金（每人 '+fmt(S.depPer)+'）</td><td class="r">'+fmt(S.dep)+'</td></tr><tr><td colspan="3">尾款</td><td class="r">'+fmt(S.bal)+'</td></tr>';
     x+='</table>';
   }else if(!it){
-    x+='<h3>報價內容</h3><table><tr><th>項目</th><th>說明</th></tr>';
+    {x+='<h3>報價內容</h3><table><tr><th>項目</th><th>說明</th></tr>';
     S.items.forEach(r=>{if(r.n)x+='<tr><td>'+h(r.n)+'</td><td>'+h(r.r)+'</td></tr>'});
-    x+='</table><table style="margin-top:10px"><tr class="tot big"><td>報價總額</td><td class="r">'+fmt(S.total)+'</td></tr><tr><td>每人均價（'+S.pax+' 人）</td><td class="r">'+fmt(S.pp)+'</td></tr>';
+    x+='</table>'}
+    x+='<table style="margin-top:10px"><tr class="tot big"><td>報價總額</td><td class="r">'+fmt(S.total)+'</td></tr><tr><td>每人均價（'+S.pax+' 人）</td><td class="r">'+fmt(S.pp)+'</td></tr>';
     if(S.depp>0)x+='<tr><td>訂金（'+S.depp+'%）</td><td class="r">'+fmt(S.dep)+'</td></tr>';
     x+='</table>';
   }else{
@@ -366,10 +419,10 @@ function buildDoc(kind){
 }
 let curKind='cust';
 function openDoc(k){curKind=k;$('doc').innerHTML=buildDoc(k);$('docview').style.display='block';document.body.classList.add('viewing');$('docview').scrollTop=0}
-function fname(k){const c=($('client').value||'').trim().replace(/[\\\/:*?"<>|]/g,'');return '報價單-'+(k==='int'?'內部版':'客戶版')+(c?'-'+c:'')+'.html'}
+function fname(k){const c=($('client').value||'').trim().replace(/[\\\/:*?"<>|]/g,'');return (k==='itin'?'行程表':'報價單-'+(k==='int'?'內部版':'客戶版'))+(c?'-'+c:'')+'.html'}
 function standalone(k){
   const body=buildDoc(k);
-  return '<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>旅遊報價單'+(k==='int'?'（內部版）':'')+'</title><style>'+DOCCSS+'</style></head><body><div class="bar noprint"><button onclick="window.print()">列印／存成 PDF</button></div>'+body+'</body></html>';
+  return '<!DOCTYPE html><html lang="zh-Hant"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+(k==='itin'?'行程表':'旅遊報價單'+(k==='int'?'（內部版）':''))+'</title><style>'+DOCCSS+'</style></head><body><div class="bar noprint"><button onclick="window.print()">列印／存成 PDF</button></div>'+body+'</body></html>';
 }
 function download(k){
   const blob=new Blob([standalone(k)],{type:'text/html;charset=utf-8'});
@@ -377,7 +430,7 @@ function download(k){
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);
 }
 document.querySelectorAll('[data-doc]').forEach(b=>b.onclick=()=>openDoc(b.dataset.doc));
-$('dlc').onclick=()=>download('cust');$('dli').onclick=()=>download('int');
+$('dlc').onclick=()=>download('cust');$('dlt').onclick=()=>download('itin');$('dli').onclick=()=>download('int');
 $('dvprint').onclick=()=>window.print();
 $('dvdl').onclick=()=>download(curKind);
 $('dvclose').onclick=()=>{$('docview').style.display='none';document.body.classList.remove('viewing')};
@@ -385,8 +438,8 @@ const st=document.createElement('style');st.textContent=DOCCSS.replace(/^\s*body
 
 function collect(){
   saveTexts();
-  const f={};document.querySelectorAll('.wrap input[id],.wrap select[id],.wrap textarea[id]').forEach(el=>{if(el.type!=='file')f[el.id]=el.value});
-  return {app:'jasco-quote',v:1,mode,fields:f,rows,texts};
+  const f={};document.querySelectorAll('.wrap input[id],.wrap select[id],.wrap textarea[id]').forEach(el=>{if(el.type==='file')return;f[el.id]=el.type==='checkbox'?el.checked:el.value});
+  return {app:'jasco-quote',v:1,mode,fields:f,rows,texts,itin};
 }
 $('saveF').onclick=()=>{
   const d=collect(),c=($('client').value||'').trim().replace(/[\\\/:*?"<>|]/g,''),n=($('c_name').value||$('g_name').value||'').trim().replace(/[\\\/:*?"<>|]/g,'');
@@ -409,8 +462,8 @@ $('fileIn').onchange=e=>{
 };
 function applyData(d){
       if(!d||d.app!=='jasco-quote')throw 0;
-      for(const k in d.fields){const el=$(k);if(el&&k!=='modeSel')el.value=d.fields[k]}
-      rows.custom=d.rows.custom||null;rows.fit=d.rows.fit||null;
+      for(const k in d.fields){const el=$(k);if(!el||k==='modeSel')continue;if(el.type==='checkbox')el.checked=!!d.fields[k];else el.value=d.fields[k]}
+      rows.custom=d.rows.custom||null;rows.fit=d.rows.fit||null;itin=Array.isArray(d.itin)?d.itin:[];_itKey='';
       for(const k in texts)delete texts[k];Object.assign(texts,d.texts||{});
       mode=d.mode;$('modeSel').value=mode;
       $('p-group').classList.toggle('hide',mode!=='group');$('p-cx').classList.toggle('hide',mode==='group');
