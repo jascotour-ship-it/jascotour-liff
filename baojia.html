@@ -36,6 +36,7 @@ td input,td select{padding:6px}
 pre{white-space:pre-wrap;background:#fafbfb;border:1px dashed var(--bd);border-radius:8px;padding:12px;margin:0;font:14px/1.7 inherit}
 .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .hide{display:none}
+.outT td{padding:4px 6px;vertical-align:middle}.outT td:first-child{font-weight:600;white-space:nowrap;width:90px}
 #itin textarea{min-height:38px;padding:6px}
 .meal{display:flex;align-items:center;gap:4px;margin-bottom:3px}.meal span{font-size:12px;color:var(--mu);width:14px}.meal input{padding:4px 6px}
 #itin td{vertical-align:top}
@@ -183,23 +184,14 @@ tr.dragging .drag{cursor:grabbing}
 
 <div class="card noprint-card">
   <h2>輸出：依上方內部資料，轉成客戶版／內部版</h2>
-  <div class="row">
-    <button class="btn" data-doc="cust">客戶版：預覽／存成 PDF</button>
-    <button class="btn ghost" data-doc="int">內部版：預覽／存成 PDF</button>
-  </div>
-  <div class="row" style="margin-top:8px">
-    <button class="btn ghost" id="dlc">下載客戶版檔案（.html）</button>
-    <button class="btn ghost" id="dli">下載內部版檔案（.html）</button>
-  </div>
-  <div class="row" style="margin-top:8px">
-    <button class="btn" data-en="cust">英文客戶版：預覽／存成 PDF</button>
-    <button class="btn itinOut" data-en="itin">英文行程表：預覽／存成 PDF</button>
-  </div>
-  <div class="row itinOut" style="margin-top:8px">
-    <button class="btn" data-doc="itin">行程表：預覽／存成 PDF</button>
-    <button class="btn ghost" id="dlt">下載行程表檔案（.html）</button>
-  </div>
-  <div class="note">存成 PDF：進入預覽後按「列印／存成 PDF」，印表機選「另存為 PDF」。客戶版不含成本、利潤與毛利率。</div>
+  <table class="outT">
+    <tr><td>客戶版</td><td><button class="btn" data-doc="cust">預覽／列印 PDF</button> <button class="btn ghost" id="dlc">下載 Word</button></td></tr>
+    <tr><td>內部版</td><td><button class="btn" data-doc="int">預覽／列印 PDF</button> <button class="btn ghost" id="dli">下載 Word</button></td></tr>
+    <tr class="itinOut"><td>行程表</td><td><button class="btn" data-doc="itin">預覽／列印 PDF</button> <button class="btn ghost" id="dlt">下載 Word</button></td></tr>
+    <tr><td>英文客戶版</td><td><button class="btn" data-en="cust">翻譯並預覽（可列印 PDF／下載 Word）</button></td></tr>
+    <tr class="itinOut"><td>英文行程表</td><td><button class="btn" data-en="itin">翻譯並預覽（可列印 PDF／下載 Word）</button></td></tr>
+  </table>
+  <div class="note">PDF：進入預覽後按「列印／存成 PDF」，印表機選「另存為 PDF」。Word：下載 .doc 檔，用 Word 打開即可修改。客戶版不含成本、利潤與毛利率。</div>
 </div>
 
 </div>
@@ -230,7 +222,7 @@ tr.dragging .drag{cursor:grabbing}
 <div id="docview">
   <div class="bar noprint">
     <button class="btn" id="dvprint">列印／存成 PDF</button>
-    <button class="btn ghost" id="dvdl">下載此版本檔案</button>
+    <button class="btn ghost" id="dvdl">下載 Word</button>
     <button class="btn ghost" id="dvclose">返回編輯</button>
   </div>
   <div id="doc"></div>
@@ -441,13 +433,41 @@ function buildDoc(kind){
 }
 let curKind='cust';
 function openDoc(k){curKind=k;$('doc').innerHTML=buildDoc(k);$('docview').style.display='block';document.body.classList.add('viewing');$('docview').scrollTop=0}
-function fname(k){const c=($('client').value||'').trim().replace(/[\\\/:*?"<>|]/g,'');return ({itin:'行程表',cust_en:'Quotation-EN',itin_en:'Itinerary-EN'}[k]||'報價單-'+(k==='int'?'內部版':'客戶版'))+(c?'-'+c:'')+'.html'}
+function fname(k){const c=($('client').value||'').trim().replace(/[\\\/:*?"<>|]/g,'');return ({itin:'行程表',cust_en:'Quotation-EN',itin_en:'Itinerary-EN'}[k]||'報價單-'+(k==='int'?'內部版':'客戶版'))+(c?'-'+c:'')+'.doc'}
 function standalone(k){
   const body=buildDoc(k);
   return '<!DOCTYPE html><html lang="'+(/_en$/.test(k)?'en':'zh-Hant')+'"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>'+({itin:'行程表',cust_en:'Travel Quotation',itin_en:'Itinerary'}[k]||'旅遊報價單'+(k==='int'?'（內部版）':''))+'</title><style>'+DOCCSS+'</style></head><body><div class="bar noprint"><button onclick="window.print()">'+(/_en$/.test(k)?'Print / Save as PDF':'列印／存成 PDF')+'</button></div>'+body+'</body></html>';
 }
+const WORDCSS=`body{font-family:"Microsoft JhengHei","微軟正黑體","PingFang TC",sans-serif;font-size:11pt;color:#1f2a30}
+h1{font-size:18pt;color:#2F6E8C;border-bottom:2.25pt solid #2F6E8C;padding-bottom:4pt;margin:0 0 6pt}
+h3{font-size:13pt;color:#2F6E8C;margin:12pt 0 4pt}
+table{border-collapse:collapse;width:100%}
+th,td{border:.75pt solid #cfd8dd;padding:4pt 6pt;vertical-align:top;font-size:10.5pt;text-align:left}
+th{background:#e8f1f5}
+td.r,th.r{text-align:right}
+tr.tot td{font-weight:bold;background:#f5f9fb}
+tr.big td{font-size:12pt;color:#2F6E8C}
+table.info td{border:none;padding:1pt 4pt}
+.lb{color:#66757e}
+.warn{color:#b4452c;background:#fbf1ee;border:.75pt solid #e6b9ac;padding:4pt;font-weight:bold}
+.foot{color:#66757e;font-size:9pt;text-align:center;margin-top:16pt}
+@page Section1{size:595.3pt 841.9pt;margin:1.6cm 1.6cm 1.6cm 1.6cm}
+div.Section1{page:Section1}`;
+function wordHTML(k){
+  const w=document.createElement('div');w.innerHTML=buildDoc(k);
+  const sh=w.querySelector('.sheet');
+  const info=sh.querySelector('.info');
+  if(info){const cells=[...info.children].map(d=>{const sp=d.querySelector('span');const lb=sp?sp.textContent:'';if(sp)sp.remove();return '<td><span class="lb">'+h(lb)+'</span>　'+h(d.textContent)+'</td>'});
+    let t='<table class="info">';for(let i=0;i<cells.length;i+=2)t+='<tr>'+cells[i]+(cells[i+1]||'<td></td>')+'</tr>';info.outerHTML=t+'</table>'}
+  sh.querySelectorAll('table').forEach(t=>{t.setAttribute('width','100%');t.setAttribute('cellspacing','0');t.setAttribute('cellpadding',t.classList.contains('info')?'2':'5');
+    if(!t.classList.contains('info')){t.setAttribute('border','1');t.style.borderCollapse='collapse';t.querySelectorAll('th,td').forEach(c=>{c.style.border='0.75pt solid #cfd8dd';c.setAttribute('valign','top')})}
+    else t.querySelectorAll('td').forEach(c=>c.setAttribute('width','50%'))});
+  sh.querySelectorAll('th').forEach(c=>{c.setAttribute('bgcolor','#e8f1f5');c.style.background='#e8f1f5'});
+  const en=/_en$/.test(k);
+  return '<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:w="urn:schemas-microsoft-com:office:word" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><title>'+({itin:'行程表',cust_en:'Travel Quotation',itin_en:'Itinerary'}[k]||'旅遊報價單')+'</title><!--[if gte mso 9]><xml><w:WordDocument><w:View>Print</w:View><w:Zoom>100</w:Zoom></w:WordDocument></xml><![endif]--><style>'+WORDCSS+'</style></head><body lang="'+(en?'EN-US':'ZH-TW')+'"><div class="Section1">'+sh.innerHTML+'</div></body></html>';
+}
 function download(k){
-  const blob=new Blob([standalone(k)],{type:'text/html;charset=utf-8'});
+  const blob=new Blob(['\ufeff'+wordHTML(k)],{type:'application/msword'});
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=fname(k);document.body.appendChild(a);a.click();
   setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500);
 }
